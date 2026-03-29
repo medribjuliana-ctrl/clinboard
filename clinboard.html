@@ -521,10 +521,17 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 let _fbApp = null, _fbAuth = null, _fbStore = null, _fbUser = null;
 let _fbSyncTimer = null;
 
-function fbGetConfig() {
-  try { const r = localStorage.getItem('clinboard_firebase_cfg'); return r ? JSON.parse(r) : null; }
-  catch { return null; }
-}
+// Configuração Firebase embutida — não precisa de setup manual
+const _FB_CONFIG = {
+  apiKey: "AIzaSyCcGq3BqJFrlADeEAdc7vHq7bzUJwmOFww",
+  authDomain: "clinboard-34c13.firebaseapp.com",
+  projectId: "clinboard-34c13",
+  storageBucket: "clinboard-34c13.firebasestorage.app",
+  messagingSenderId: "370913383327",
+  appId: "1:370913383327:web:5bebe09873fc4238e923aa"
+};
+
+function fbGetConfig() { return _FB_CONFIG; }
 
 function fbInit(cfg) {
   try {
@@ -2507,18 +2514,11 @@ document.addEventListener('keydown', e => {
 // INIT
 // ======================================================================
 (function initApp() {
-  const cfg = fbGetConfig();
-  if (cfg) {
-    // Firebase config already saved → initialize and check auth
-    if (fbInit(cfg)) {
-      fbStartAuth();
-    } else {
-      // Init failed (bad config?) → run locally
-      loadDB(); applyCustomNames(); renderHome(); renderBreadcrumb();
-    }
+  if (fbInit(_FB_CONFIG)) {
+    fbStartAuth();
   } else {
-    // No config yet → show setup screen
-    fbShowSetup();
+    // Fallback local se Firebase falhar
+    loadDB(); applyCustomNames(); renderHome(); renderBreadcrumb();
   }
 })();
 
