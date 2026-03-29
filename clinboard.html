@@ -1,0 +1,2309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>clinBoard — Gestão de Exames</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a3a5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="clinBoard">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{--primary:#1a3a5c;--primary-dk:#122844;--primary-lt:#dbeeff;--primary-mid:#2563a8;--accent:#3b82c4;--accent-lt:#dbeeff;--danger:#dc2626;--success:#16a34a;--warn:#d97706;--g50:#f7f9fc;--g100:#eef2f7;--g200:#dde6f0;--g300:#c5d4e6;--g400:#94aec8;--g500:#6b8aab;--g600:#4a6d8c;--g700:#2f4f6e;--g800:#1a3a5c;--g900:#0f2236;--hi-bg:#fef2f2;--hi-tx:#b91c1c;--lo-bg:#eff6ff;--lo-tx:#1a3a5c;--r:8px;--sh:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);--shm:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.05);--shl:0 10px 15px rgba(0,0,0,.1),0 4px 6px rgba(0,0,0,.05)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--g50);color:var(--g800);min-height:100vh}
+.app-header{background:linear-gradient(135deg,#1a3a5c 0%,#1e4d7a 60%,#2563a8 100%);color:#fff;padding:0 24px;height:62px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(26,58,92,.35);position:sticky;top:0;z-index:100}
+.app-logo{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none}
+.app-logo svg{flex-shrink:0}
+.app-logo-text{display:flex;flex-direction:column;line-height:1}
+.app-logo-name{font-size:20px;font-weight:800;letter-spacing:-.3px;color:#fff}
+.app-logo-name .clin{color:#7ec8f0;font-weight:600}
+.app-logo-name .board{color:#fff;font-weight:800}
+.app-logo-sub{font-size:10px;font-weight:400;color:rgba(255,255,255,.55);letter-spacing:.5px;text-transform:uppercase;margin-top:1px}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:14px;opacity:.9}
+.bc-item{cursor:pointer;padding:2px 6px;border-radius:4px;transition:background .15s}
+.bc-item:hover{background:rgba(255,255,255,.15)}
+.bc-sep{opacity:.4}
+.bc-cur{opacity:.7;cursor:default}
+.bc-cur:hover{background:none}
+.hdr-actions{display:flex;gap:8px}
+.btn{padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dk)}
+.btn-ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3)}.btn-ghost:hover{background:rgba(255,255,255,.1)}
+.btn-outline{background:#fff;color:var(--primary);border:1px solid var(--g200)}.btn-outline:hover{background:var(--g50);border-color:var(--g300)}.btn-secondary{background:#e8f4fd;color:#1a6fb0;border:1px solid #b3d4f0}.btn-secondary:hover{background:#cce4f7;border-color:#80b8e6}
+.btn-success{background:var(--accent);color:#fff}.btn-success:hover{background:#2563a8}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-warn{background:var(--warn);color:#fff}.btn-warn:hover{background:#b45309}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-lg{padding:10px 20px;font-size:15px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.main{padding:24px;max-width:1400px;margin:0 auto}
+.view{display:none}.view.active{display:block}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.sec-title{font-size:22px;font-weight:700;color:var(--g900)}
+.sec-sub{font-size:14px;color:var(--g500);margin-top:2px}
+/* Units grid */
+.units-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.unit-card{background:#fff;border-radius:12px;padding:22px;box-shadow:var(--sh);border:1px solid var(--g200);cursor:pointer;transition:all .2s;position:relative}
+.unit-card:hover{box-shadow:var(--shm);border-color:var(--primary);transform:translateY(-1px)}
+.unit-icon{width:44px;height:44px;background:var(--primary-lt);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:12px}
+.unit-name{font-size:16px;font-weight:600;color:var(--g900);margin-bottom:4px}
+.unit-stats{font-size:13px;color:var(--g500)}
+.unit-actions{position:absolute;top:10px;right:10px;display:none;gap:4px}
+.unit-card:hover .unit-actions{display:flex}
+.icon-btn{width:28px;height:28px;border:none;background:var(--g100);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--g600);transition:all .15s}
+.icon-btn:hover{background:var(--g200);color:var(--g900)}
+.icon-btn.del:hover{background:#fef2f2;color:var(--danger)}
+.add-card{background:#fff;border:2px dashed var(--g300);border-radius:12px;padding:24px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px;color:var(--g400)}
+.add-card:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-lt)}
+.add-card span{font-size:13px;font-weight:500}
+/* Patient table */
+.pt-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.search-input{flex:1;min-width:180px;max-width:300px;padding:8px 12px 8px 34px;border:1px solid var(--g200);border-radius:8px;font-size:14px;color:var(--g800);background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.5'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 10px center}
+.search-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-lt)}
+.filter-tabs{display:flex;background:var(--g100);border-radius:8px;padding:3px;gap:2px}
+.filter-tab{padding:5px 14px;font-size:13px;font-weight:500;border-radius:6px;border:none;background:transparent;color:var(--g600);cursor:pointer;transition:all .15s}
+.filter-tab.active{background:#fff;color:var(--primary);box-shadow:var(--sh)}
+.data-table{background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--sh);border:1px solid var(--g200);width:100%;border-collapse:collapse}
+.data-table th{background:var(--g50);padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--g500);text-align:left;border-bottom:1px solid var(--g200)}
+.data-table td{padding:11px 14px;font-size:14px;color:var(--g700);border-bottom:1px solid var(--g100);vertical-align:middle}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tbody tr:hover td{background:var(--g50)}
+.data-table tbody tr{cursor:pointer;transition:background .1s}
+.pt-name{font-weight:600;color:var(--g900)}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600;gap:4px}
+.badge-active{background:#dcfce7;color:#15803d}
+.badge-arch{background:var(--g100);color:var(--g500)}
+.leito-bd{display:inline-flex;background:var(--primary-lt);color:var(--primary);padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700}
+/* Patient header */
+.pt-hdr{background:#fff;border-radius:12px;padding:18px 22px;margin-bottom:20px;box-shadow:var(--sh);border:1px solid var(--g200);display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.pt-info{flex:1}
+.pt-info h2{font-size:20px;font-weight:700;color:var(--g900);margin-bottom:8px}
+.pt-meta{display:flex;gap:16px;flex-wrap:wrap}
+.pt-meta-i{font-size:13px;color:var(--g500);display:flex;align-items:center;gap:4px}
+.pt-meta-i strong{color:var(--g700)}
+.pt-actions{display:flex;gap:8px;align-items:flex-start;flex-shrink:0}
+/* Tabs */
+.tab-bar{display:flex;border-bottom:2px solid var(--g200);margin-bottom:20px}
+.tab-btn{padding:10px 20px;font-size:14px;font-weight:500;border:none;background:transparent;color:var(--g500);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
+.tab-btn:hover:not(.active){color:var(--g700)}
+/* Lab toolbar */
+.lab-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+/* Upload area */
+.upload-area{border:2px dashed var(--g300);border-radius:12px;padding:40px;text-align:center;transition:all .2s;cursor:pointer;background:#fff}
+.upload-area:hover,.upload-area.dragover{border-color:var(--primary);background:var(--primary-lt)}
+.upload-area h3{font-size:16px;font-weight:600;color:var(--g700);margin-bottom:6px}
+.upload-area p{font-size:14px;color:var(--g500)}
+/* Exam table */
+.exam-wrap{background:#fff;border-radius:12px;border:1px solid var(--g200);overflow-x:auto;box-shadow:var(--sh)}
+.exam-table{width:100%;border-collapse:collapse;font-size:13px}
+.exam-table th{background:var(--primary);color:#fff;padding:8px 12px;text-align:center;font-weight:600;white-space:nowrap;border-right:1px solid rgba(255,255,255,.15)}
+.th-date-wrap{display:flex;align-items:center;justify-content:center;gap:6px}
+.del-date-btn{background:rgba(255,255,255,.15);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:11px;padding:2px 5px;line-height:1;opacity:0;transition:opacity .15s}
+.exam-table th:hover .del-date-btn{opacity:1}
+.del-date-btn:hover{background:rgba(239,68,68,.6)!important}
+.exam-table th:first-child{text-align:left;min-width:180px;background:var(--primary-dk);position:sticky;left:0;z-index:2}
+.exam-table td{padding:7px 10px;text-align:center;border-right:1px solid var(--g100);border-bottom:1px solid var(--g100);white-space:nowrap}
+.exam-table td:first-child{text-align:left;background:var(--g50);font-weight:500;color:var(--g700);border-right:2px solid var(--g200);position:sticky;left:0;z-index:1}
+.exam-table tbody tr:hover td{background:#f0f9ff}
+.exam-table tbody tr:hover td:first-child{background:#e0f2fe}
+.culture-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;white-space:normal;max-width:160px;line-height:1.4;text-align:center}
+.culture-pos{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.culture-neg{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
+.qual-badge{display:inline-block;padding:2px 7px;border-radius:8px;font-size:11px;font-weight:600;white-space:nowrap}
+.qual-normal{background:var(--g100);color:var(--g500)}
+.qual-warn{background:#fef9c3;color:#854d0e;border:1px solid #fde047}
+.qual-high{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.cell-hi{background:var(--hi-bg)!important;color:var(--hi-tx);font-weight:600}
+.cell-lo{background:var(--lo-bg)!important;color:var(--lo-tx);font-weight:600}
+.cell-hi::after{content:' ▲';font-size:9px}
+.cell-lo::after{content:' ▼';font-size:9px}
+.cell-empty{color:var(--g300)}
+.param-unit{font-size:11px;color:var(--g400);font-weight:400;margin-left:3px}
+/* Imaging */
+.img-list{display:flex;flex-direction:column;gap:10px}
+.img-item{background:#fff;border-radius:10px;padding:14px 18px;border:1px solid var(--g200);box-shadow:var(--sh);display:flex;align-items:center;gap:14px}
+.img-icon{width:40px;height:40px;border-radius:8px;background:var(--accent-lt);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.img-info{flex:1}
+.img-type{font-size:15px;font-weight:600;color:var(--g900)}
+.img-date{font-size:12px;color:var(--g500);margin-top:2px}
+.img-file{font-size:11px;color:var(--g400);margin-top:2px}
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;box-shadow:var(--shl);width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+.modal-lg{max-width:680px}
+.modal-xl{max-width:900px}
+.modal-hdr{padding:18px 22px 14px;border-bottom:1px solid var(--g100);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:17px;font-weight:700;color:var(--g900)}
+.modal-close{width:30px;height:30px;border-radius:8px;border:none;background:var(--g100);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;color:var(--g600);transition:all .15s}
+.modal-close:hover{background:var(--g200);color:var(--g900)}
+.modal-body{padding:18px 22px}
+.modal-footer{padding:14px 22px 18px;border-top:1px solid var(--g100);display:flex;gap:8px;justify-content:flex-end}
+/* Forms */
+.form-group{margin-bottom:15px}
+.form-label{display:block;font-size:13px;font-weight:600;color:var(--g700);margin-bottom:5px}
+.form-input{width:100%;padding:8px 12px;border:1px solid var(--g200);border-radius:8px;font-size:14px;color:var(--g800);background:#fff;transition:all .15s}
+.form-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-lt)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* Extracted results */
+.ext-header{display:grid;grid-template-columns:2fr 1fr 1fr 1.5fr 28px;gap:8px;padding:4px 10px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g400);margin-bottom:4px}
+.ext-list{display:flex;flex-direction:column;gap:5px;max-height:360px;overflow-y:auto;padding-right:4px}
+.ext-item{display:grid;grid-template-columns:2fr 1fr 1fr 1.5fr 28px;gap:8px;align-items:center;padding:7px 10px;background:var(--g50);border-radius:8px;border:1px solid var(--g100)}
+.ext-item.excluded{opacity:.35}
+.ext-item.unknown{background:#fffbeb;border-color:#fde68a}
+.ext-name{font-size:13px;font-weight:600;color:var(--g800)}
+.unknown-badge{display:inline-block;font-size:10px;font-weight:700;background:#fde68a;color:#92400e;border-radius:4px;padding:1px 5px;margin-left:5px;vertical-align:middle}
+.unknown-actions{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
+.unknown-actions button{font-size:11px;padding:3px 8px;border:1px solid #fde68a;border-radius:5px;cursor:pointer;background:#fffbeb;color:#92400e;font-weight:500;transition:all .15s}
+.unknown-actions button:hover{background:#fef3c7;border-color:#f59e0b}
+.synonym-picker{display:flex;gap:5px;margin-top:6px;align-items:center;flex-wrap:wrap;padding:6px 8px;background:#f0f9ff;border:1px solid var(--primary);border-radius:6px}
+.synonym-picker input{flex:1;min-width:160px;padding:4px 7px;border:1px solid var(--primary);border-radius:5px;font-size:12px;outline:none}
+.sp-confirm{padding:3px 10px;background:var(--primary);color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:600;font-size:12px}
+.sp-confirm:hover{background:var(--primary-dk)}
+.sp-cancel{padding:3px 8px;background:var(--g100);color:var(--g600);border:1px solid var(--g300);border-radius:5px;cursor:pointer;font-size:12px}
+.sp-cancel:hover{background:var(--g200)}
+.ext-val input,.ext-unit input,.ext-ref input{width:100%;padding:3px 6px;border:1px solid var(--g200);border-radius:5px;font-size:13px;background:#fff;color:var(--g700)}
+.ext-val input:focus,.ext-unit input:focus,.ext-ref input:focus{outline:none;border-color:var(--primary)}
+.toggle-btn{width:24px;height:24px;border-radius:50%;border:2px solid var(--g300);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .15s;flex-shrink:0}
+.toggle-btn.on{border-color:var(--accent);background:var(--accent);color:#fff}
+/* Processing */
+.proc-bar{height:4px;background:var(--g200);border-radius:2px;overflow:hidden;margin:12px 0}
+.proc-fill{height:100%;background:var(--primary);border-radius:2px;transition:width .3s;width:0%}
+.proc-fill.indeterminate{animation:prog 1.5s infinite;width:35%!important}
+@keyframes prog{0%{transform:translateX(-200%)}100%{transform:translateX(400%)}
+}
+/* Empty state */
+.empty{text-align:center;padding:50px 20px;color:var(--g400)}
+.empty-icon{font-size:44px;margin-bottom:14px}
+.empty h3{font-size:16px;font-weight:600;color:var(--g500);margin-bottom:6px}
+.empty p{font-size:14px}
+/* Toast */
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--g900);color:#fff;padding:11px 16px;border-radius:10px;font-size:14px;box-shadow:var(--shl);animation:slide-in .2s ease-out;display:flex;align-items:center;gap:8px}
+.toast.ok{background:#166534}
+.toast.err{background:#991b1b}
+@keyframes slide-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--g100);border-radius:3px}
+::-webkit-scrollbar-thumb{background:var(--g300);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--g400)}
+@media(max-width:640px){.main{padding:16px}.form-row{grid-template-columns:1fr}.pt-hdr{flex-direction:column}.ext-item{grid-template-columns:1fr 1fr;grid-template-rows:auto auto}.ext-header{display:none}}
+.diag-text{font-size:13px;color:var(--g600);font-style:italic;max-width:400px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+  <div class="app-logo" onclick="goHome()">
+    <svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="cbGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#7ec8f0"/>
+          <stop offset="100%" stop-color="#1a3a5c"/>
+        </linearGradient>
+      </defs>
+      <!-- Calendar body -->
+      <rect x="3" y="8" width="26" height="25" rx="4" stroke="url(#cbGrad)" stroke-width="2.5" fill="none"/>
+      <!-- Calendar hooks -->
+      <line x1="11" y1="4" x2="11" y2="11" stroke="url(#cbGrad)" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="19" y1="4" x2="19" y2="11" stroke="url(#cbGrad)" stroke-width="2.5" stroke-linecap="round"/>
+      <!-- Checkmark -->
+      <polyline points="8,20 14,27 24,14" stroke="url(#cbGrad)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <!-- Test tube -->
+      <rect x="28" y="12" width="7" height="16" rx="3.5" stroke="url(#cbGrad)" stroke-width="2" fill="none"/>
+      <line x1="28" y1="17" x2="35" y2="17" stroke="url(#cbGrad)" stroke-width="1.5"/>
+      <circle cx="31.5" cy="22" r="1.5" fill="url(#cbGrad)"/>
+    </svg>
+    <div class="app-logo-text">
+      <span class="app-logo-name"><span class="clin">clin</span><span class="board">Board</span></span>
+      <span class="app-logo-sub">Gestão de Exames</span>
+    </div>
+  </div>
+  <nav class="breadcrumb" id="breadcrumb"></nav>
+  <div class="hdr-actions">
+    <button class="btn btn-ghost btn-sm" onclick="exportData()">⬆ Exportar</button>
+    <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬇ Importar<input type="file" accept=".json" id="import-file" style="display:none" onchange="importData(event)"></label>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- VIEW: HOME -->
+  <div class="view active" id="view-home">
+    <div class="sec-hdr">
+      <div><div class="sec-title">Unidades de Saúde</div><div class="sec-sub">Selecione uma unidade para gerenciar os pacientes</div></div>
+      <button class="btn btn-primary" onclick="openUnitModal()">+ Nova Unidade</button>
+    </div>
+    <div class="units-grid" id="units-grid"></div>
+  </div>
+
+  <!-- VIEW: UNIT -->
+  <div class="view" id="view-unit">
+    <div class="sec-hdr">
+      <div><div class="sec-title" id="unit-title"></div><div class="sec-sub" id="unit-sub"></div></div>
+      <button class="btn btn-primary" onclick="openPatientModal()">+ Novo Paciente</button>
+    </div>
+    <div class="pt-toolbar">
+      <input class="search-input" type="text" placeholder="Buscar paciente..." id="pt-search" oninput="renderPatients()">
+      <div class="filter-tabs">
+        <button class="filter-tab active" id="tab-ativo" onclick="setFilter('ativo',this)">Ativos</button>
+        <button class="filter-tab" id="tab-arquivado" onclick="setFilter('arquivado',this)">Arquivados</button>
+      </div>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>Leito</th><th>Paciente</th><th>Idade</th><th>Admissão</th><th>Diagnóstico</th><th>Status</th><th></th></tr></thead>
+      <tbody id="pt-tbody"></tbody>
+    </table>
+    <div id="pt-empty" class="empty" style="display:none"><div class="empty-icon">🛏️</div><h3>Nenhum paciente encontrado</h3><p>Adicione um novo paciente à unidade</p></div>
+  </div>
+
+  <!-- VIEW: PATIENT -->
+  <div class="view" id="view-patient">
+    <div class="pt-hdr">
+      <div class="pt-info"><h2 id="pt-name-h2"></h2><div class="pt-meta" id="pt-meta"></div></div>
+      <div class="pt-actions" id="pt-actions"></div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="setTab('lab',this)">🧪 Exames Laboratoriais</button>
+      <button class="tab-btn" onclick="setTab('img',this)">🔬 Exames de Imagem</button>
+    </div>
+    <div id="panel-lab">
+      <div class="lab-toolbar">
+        <span style="font-size:14px;color:var(--g500)" id="lab-info"></span>
+        <button class="btn btn-success" id="btn-download-pdf" style="display:none" onclick="downloadLabPDF()">📄 Baixar PDF</button>
+        <button class="btn btn-success" onclick="openUpload('lab')">↑ Adicionar Resultado</button>
+      </div>
+      <div id="lab-content"></div>
+    </div>
+    <div id="panel-img" style="display:none">
+      <div class="lab-toolbar">
+        <span style="font-size:14px;color:var(--g500)" id="img-info"></span>
+        <button class="btn btn-success" onclick="openUpload('img')">↑ Adicionar Exame</button>
+      </div>
+      <div id="img-content"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- MODAL: UNIT -->
+<div class="modal-overlay" id="modal-unit">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title" id="modal-unit-title">Nova Unidade</span><button class="modal-close" onclick="closeModal('modal-unit')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Nome da Unidade *</label><input class="form-input" id="inp-unit-name" placeholder="Ex: HUGO - UTI 4, HOC - Clínica Médica..."></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-unit')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveUnit()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: PATIENT -->
+<div class="modal-overlay" id="modal-patient">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title" id="modal-pt-title">Novo Paciente</span><button class="modal-close" onclick="closeModal('modal-patient')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Leito *</label><input class="form-input" id="inp-leito" placeholder="Ex: 01, A3, UTI-2"></div>
+        <div class="form-group"><label class="form-label">Idade</label><input class="form-input" id="inp-idade" placeholder="Ex: 54a, 3m"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Nome Completo *</label><input class="form-input" id="inp-nome" placeholder="Nome do paciente"></div>
+      <div class="form-group"><label class="form-label">Data de Admissão</label><input class="form-input" type="date" id="inp-admissao"></div>
+      <div class="form-group"><label class="form-label">Diagnóstico / Hipótese</label><input class="form-input" id="inp-diag" placeholder="Ex: Sepse de foco pulmonar, AVC isquêmico"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-patient')">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePatient()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: UPLOAD -->
+<div class="modal-overlay" id="modal-upload">
+  <div class="modal modal-xl">
+    <div class="modal-hdr"><span class="modal-title" id="modal-upload-title">Adicionar Resultado</span><button class="modal-close" onclick="closeModal('modal-upload')">✕</button></div>
+    <div class="modal-body">
+      <!-- Step 1: drop -->
+      <div id="step-1">
+        <div class="upload-area" id="dropzone" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)" onclick="document.getElementById('pdf-input').click()">
+          <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="onFileSelect(event)">
+          <div style="font-size:40px;margin-bottom:12px">📄</div>
+          <h3>Clique ou arraste o PDF aqui</h3>
+          <p>Suporte: HUGO, Citomed/HOC, Biocentro/IMEC, Pio X e outros formatos</p>
+        </div>
+      </div>
+      <!-- Step 2: processing -->
+      <div id="step-2" style="display:none">
+        <div style="text-align:center;padding:24px 0">
+          <div style="font-size:36px;margin-bottom:12px">⚙️</div>
+          <div style="font-size:16px;font-weight:600;color:var(--g700)">Extraindo resultados...</div>
+          <div class="proc-bar"><div class="proc-fill indeterminate"></div></div>
+          <div style="font-size:13px;color:var(--g500)" id="proc-status">Lendo PDF...</div>
+        </div>
+      </div>
+      <!-- Step 3: review lab -->
+      <div id="step-3" style="display:none">
+        <div style="margin-bottom:10px">
+          <div style="font-size:15px;font-weight:600;color:var(--g800)">Revisar resultados extraídos</div>
+          <div style="font-size:13px;color:var(--g500);margin-top:3px">Data de coleta: <strong id="ext-date" style="color:var(--g700)"></strong> &nbsp;·&nbsp; Lab: <span id="ext-lab" style="color:var(--g600)"></span></div>
+          <div style="font-size:12px;color:var(--g400);margin-top:3px">Use ✓ para incluir/excluir cada parâmetro. Você pode editar os valores antes de salvar.</div>
+        </div>
+        <div class="ext-header"><span>Parâmetro</span><span>Resultado</span><span>Unidade</span><span>Referência</span><span></span></div>
+        <div class="ext-list" id="ext-list"></div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--g100)">
+          <div style="font-size:13px;font-weight:600;color:var(--g600);margin-bottom:8px">+ Adicionar parâmetro manualmente</div>
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1.5fr auto;gap:6px;align-items:center">
+            <input class="form-input" id="man-name" placeholder="Parâmetro" style="padding:6px 8px;font-size:13px">
+            <input class="form-input" id="man-val" placeholder="Valor" style="padding:6px 8px;font-size:13px">
+            <input class="form-input" id="man-unit" placeholder="Unidade" style="padding:6px 8px;font-size:13px">
+            <input class="form-input" id="man-ref" placeholder="Ex: 3,5 - 5,0" style="padding:6px 8px;font-size:13px">
+            <button class="btn btn-outline btn-sm" onclick="addManual()">+</button>
+          </div>
+        </div>
+        <div style="margin-top:8px;padding:8px 12px;background:var(--g50);border-radius:8px;font-size:12px;color:var(--g500)">
+          Data de coleta: <input type="date" id="ext-date-edit" style="border:1px solid var(--g200);border-radius:5px;padding:2px 6px;font-size:12px;margin-left:6px">
+        </div>
+      </div>
+      <!-- Step 3b: imaging form -->
+      <div id="step-3b" style="display:none">
+        <div class="form-group"><label class="form-label">Tipo de Exame *</label>
+          <select class="form-input" id="img-type-sel" onchange="toggleImgCustom()">
+            <option value="">Selecione...</option>
+            <option>TC de Tórax</option><option>TC de Abdome e Pelve</option><option>TC de Crânio</option><option>TC de Coluna</option><option>TC de Outros</option>
+            <option>RX de Tórax</option><option>RX de Outros</option>
+            <option>USG de Abdome</option><option>USG de Pelve</option><option>USG de Outros</option>
+            <option>RNM de Crânio</option><option>RNM de Coluna</option><option>RNM de Outros</option>
+            <option>Ecocardiograma</option><option>Endoscopia</option><option>Colonoscopia</option>
+            <option>Cintilografia</option><option>PET-CT</option><option>Outro</option>
+          </select>
+        </div>
+        <div class="form-group" id="img-custom-grp" style="display:none"><label class="form-label">Especificar Tipo</label><input class="form-input" id="img-type-custom" placeholder="Descreva o tipo"></div>
+        <div class="form-group"><label class="form-label">Data do Exame *</label><input class="form-input" type="date" id="img-date"></div>
+        <div style="padding:10px 14px;background:var(--g50);border-radius:8px;font-size:13px;color:var(--g500)">📎 Arquivo: <span id="img-fname" style="color:var(--g700);font-weight:500"></span></div>
+      </div>
+      <!-- Error -->
+      <div id="step-err" style="display:none">
+        <div style="text-align:center;padding:20px 0">
+          <div style="font-size:36px;margin-bottom:12px">⚠️</div>
+          <div style="font-size:15px;font-weight:600;color:var(--g700)">Nenhum resultado extraído automaticamente</div>
+          <div style="font-size:13px;color:var(--g500);margin-top:6px" id="err-msg">Você pode adicionar parâmetros manualmente.</div>
+          <button class="btn btn-outline" style="margin-top:12px" onclick="showManualMode()">Adicionar manualmente</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-upload')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-lab" style="display:none" onclick="saveLab()">Salvar Resultados</button>
+      <button class="btn btn-primary" id="btn-save-img" style="display:none" onclick="saveImg()">Salvar Exame</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: TRANSFER PATIENT -->
+<div class="modal-overlay" id="modal-transfer">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hdr"><span class="modal-title">Transferir Paciente</span><button class="modal-close" onclick="closeModal('modal-transfer')">✕</button></div>
+    <div class="modal-body">
+      <p id="transfer-patient-name" style="font-weight:700;font-size:15px;color:var(--g800);margin-bottom:16px"></p>
+      <div class="form-group">
+        <label class="form-label">Novo leito (opcional)</label>
+        <input class="form-input" id="transfer-leito" placeholder="Deixe em branco para manter o atual">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Unidade de destino *</label>
+        <select class="form-input" id="transfer-unit-sel"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-transfer')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmTransfer()">↗ Transferir</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CONFIRM -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title" id="conf-title">Confirmar</span><button class="modal-close" onclick="closeModal('modal-confirm')">✕</button></div>
+    <div class="modal-body"><p id="conf-msg" style="font-size:15px;color:var(--g700)"></p></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-confirm')">Cancelar</button>
+      <button class="btn btn-danger" id="conf-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+// ======================================================================
+// SETUP
+// ======================================================================
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ======================================================================
+// STATE & DATA
+// ======================================================================
+let state = { view:'home', unitId:null, patientId:null, tab:'lab', filter:'ativo' };
+
+let db = { units: [] };
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function saveDB() {
+  try { localStorage.setItem('clinboard_db', JSON.stringify(db)); } catch(e) { toast('Erro ao salvar dados. Storage cheio?','err'); }
+}
+
+function loadDB() {
+  try {
+    const raw = localStorage.getItem('clinboard_db');
+    if (raw) db = JSON.parse(raw);
+    // ensure structure
+    if (!db.units) db.units = [];
+    db.units.forEach(u => {
+      if (!u.patients) u.patients = [];
+      u.patients.forEach(p => {
+        if (!p.labExams) p.labExams = {};
+        if (!p.imagingExams) p.imagingExams = [];
+        if (!p.status) p.status = 'ativo';
+      });
+    });
+  } catch(e) { db = { units: [] }; }
+}
+
+// ======================================================================
+// CUSTOM NAME MAPPINGS (persisted in localStorage)
+// ======================================================================
+function loadCustomNames() {
+  try { const r = localStorage.getItem('clinboard_custom_names'); return r ? JSON.parse(r) : {newParams:[],synonyms:{}}; }
+  catch { return {newParams:[],synonyms:{}}; }
+}
+function saveCustomNames(cn) {
+  try { localStorage.setItem('clinboard_custom_names', JSON.stringify(cn)); } catch(e) {}
+}
+function applyCustomNames() {
+  const cn = loadCustomNames();
+  cn.newParams.forEach(n => PARAM_WHITELIST.add(n));
+  Object.entries(cn.synonyms).forEach(([k,v]) => { NAME_MAP[k]=v; PARAM_WHITELIST.add(v); });
+}
+
+function getUnit(id) { return db.units.find(u => u.id === id); }
+function getPatient(unitId, patId) {
+  const u = getUnit(unitId);
+  return u ? u.patients.find(p => p.id === patId) : null;
+}
+
+// ======================================================================
+// NAVIGATION
+// ======================================================================
+function setView(v) {
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  state.view = v;
+  renderBreadcrumb();
+}
+
+function goHome() { state.unitId=null; state.patientId=null; setView('home'); renderHome(); }
+
+function goUnit(id) {
+  state.unitId = id; state.patientId = null;
+  setView('unit'); renderUnit();
+}
+
+function goPatient(patId) {
+  state.patientId = patId;
+  setView('patient'); renderPatient();
+}
+
+function renderBreadcrumb() {
+  const bc = document.getElementById('breadcrumb');
+  const parts = [];
+  if (state.view === 'home') { bc.innerHTML=''; return; }
+  parts.push(`<span class="bc-item" onclick="goHome()">Unidades</span>`);
+  if (state.unitId) {
+    const u = getUnit(state.unitId);
+    if (u) {
+      if (state.view === 'patient') {
+        parts.push(`<span class="bc-sep">›</span><span class="bc-item" onclick="goUnit('${u.id}')">${u.name}</span>`);
+        const p = getPatient(state.unitId, state.patientId);
+        if (p) parts.push(`<span class="bc-sep">›</span><span class="bc-cur">${p.nome}</span>`);
+      } else {
+        parts.push(`<span class="bc-sep">›</span><span class="bc-cur">${u.name}</span>`);
+      }
+    }
+  }
+  bc.innerHTML = parts.join('');
+}
+
+// ======================================================================
+// RENDER HOME
+// ======================================================================
+function renderHome() {
+  const grid = document.getElementById('units-grid');
+  let html = '';
+  db.units.forEach(u => {
+    const active = u.patients.filter(p => p.status==='ativo').length;
+    const total = u.patients.length;
+    html += `<div class="unit-card" onclick="goUnit('${u.id}')">
+      <div class="unit-actions" onclick="event.stopPropagation()">
+        <button class="icon-btn" onclick="openUnitModal('${u.id}')" title="Editar">✏️</button>
+        <button class="icon-btn del" onclick="deleteUnit('${u.id}')" title="Excluir">🗑️</button>
+      </div>
+      <div class="unit-icon">🏥</div>
+      <div class="unit-name">${u.name}</div>
+      <div class="unit-stats">${active} paciente${active!==1?'s':''} ativo${active!==1?'s':''} · ${total} total</div>
+    </div>`;
+  });
+  html += `<div class="add-card" onclick="openUnitModal()"><div style="font-size:28px">+</div><span>Nova Unidade</span></div>`;
+  grid.innerHTML = html;
+}
+
+// ======================================================================
+// RENDER UNIT
+// ======================================================================
+let currentFilter = 'ativo';
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderPatients();
+}
+
+function renderUnit() {
+  const u = getUnit(state.unitId);
+  if (!u) return;
+  document.getElementById('unit-title').textContent = u.name;
+  const active = u.patients.filter(p=>p.status==='ativo').length;
+  document.getElementById('unit-sub').textContent = `${active} paciente${active!==1?'s':''} internado${active!==1?'s':''}`;
+  renderPatients();
+}
+
+function renderPatients() {
+  const u = getUnit(state.unitId);
+  if (!u) return;
+  const q = (document.getElementById('pt-search').value||'').toLowerCase();
+  const rows = u.patients.filter(p => {
+    if (p.status !== currentFilter) return false;
+    if (!q) return true;
+    return p.nome.toLowerCase().includes(q) || p.leito.toLowerCase().includes(q) || (p.diagnostico||'').toLowerCase().includes(q);
+  });
+  const tbody = document.getElementById('pt-tbody');
+  const empty = document.getElementById('pt-empty');
+  if (rows.length === 0) {
+    tbody.innerHTML = ''; empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  // Sort by leito
+  rows.sort((a,b) => a.leito.localeCompare(b.leito, undefined, {numeric:true}));
+  tbody.innerHTML = rows.map(p => {
+    const admStr = p.dataAdmissao ? new Date(p.dataAdmissao+'T00:00:00').toLocaleDateString('pt-BR') : '—';
+    const badge = p.status==='ativo'
+      ? `<span class="badge badge-active">● Internado</span>`
+      : `<span class="badge badge-arch">Arquivado</span>`;
+    const labCount = Object.keys(p.labExams||{}).length;
+    return `<tr onclick="goPatient('${p.id}')">
+      <td><span class="leito-bd">${p.leito}</span></td>
+      <td><div class="pt-name">${p.nome}</div><div style="font-size:11px;color:var(--g400);margin-top:2px">${labCount} parâmetro${labCount!==1?'s':''}</div></td>
+      <td>${p.idade||'—'}</td>
+      <td>${admStr}</td>
+      <td><div class="diag-text">${p.diagnostico||'—'}</div></td>
+      <td>${badge}</td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap">
+        <button class="icon-btn" onclick="openPatientModal('${p.id}')" title="Editar">✏️</button>
+        ${p.status==='ativo'
+          ? `<button class="icon-btn" onclick="openTransferModal('${p.id}','${u.id}')" title="Transferir para outra unidade">↗</button>
+             <button class="icon-btn" onclick="archivePatient('${p.id}')" title="Alta">🏠</button>`
+          : `<button class="icon-btn" onclick="unarchivePatient('${p.id}')" title="Reinternação">🔄</button>`}
+        <button class="icon-btn del" onclick="deletePatient('${p.id}')" title="Excluir">🗑️</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ======================================================================
+// RENDER PATIENT
+// ======================================================================
+function renderPatient() {
+  const p = getPatient(state.unitId, state.patientId);
+  if (!p) return;
+  document.getElementById('pt-name-h2').textContent = p.nome;
+  const admStr = p.dataAdmissao ? new Date(p.dataAdmissao+'T00:00:00').toLocaleDateString('pt-BR') : '—';
+  document.getElementById('pt-meta').innerHTML = `
+    <div class="pt-meta-i">🛏 Leito: <strong>${p.leito}</strong></div>
+    <div class="pt-meta-i">👤 Idade: <strong>${p.idade||'—'}</strong></div>
+    <div class="pt-meta-i">📅 Admissão: <strong>${admStr}</strong></div>
+    <div class="pt-meta-i">🔍 <strong>${p.diagnostico||'Sem diagnóstico registrado'}</strong></div>
+  `;
+  const badge = p.status==='ativo'
+    ? `<span class="badge badge-active">● Internado</span>`
+    : `<span class="badge badge-arch">Alta</span>`;
+  document.getElementById('pt-actions').innerHTML = `
+    ${badge}
+    <button class="btn btn-outline btn-sm" onclick="openPatientModal('${p.id}')">✏️ Editar</button>
+    ${p.status==='ativo'
+      ? `<button class="btn btn-secondary btn-sm" onclick="openTransferModal('${p.id}','${state.unitId}')">↗ Transferir</button>
+         <button class="btn btn-warn btn-sm" onclick="archivePatient('${p.id}')">🏠 Alta</button>`
+      : `<button class="btn btn-outline btn-sm" onclick="unarchivePatient('${p.id}')">🔄 Reinternação</button>`}
+  `;
+  renderLabPanel();
+  renderImgPanel();
+}
+
+function setTab(t, btn) {
+  state.tab = t;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-lab').style.display = t==='lab' ? '' : 'none';
+  document.getElementById('panel-img').style.display = t==='img' ? '' : 'none';
+}
+
+function renderLabPanel() {
+  const p = getPatient(state.unitId, state.patientId);
+  if (!p) return;
+  const exams = p.labExams || {};
+  const params = Object.keys(exams);
+  document.getElementById('lab-info').textContent =
+    params.length > 0 ? `${params.length} parâmetro${params.length!==1?'s':''} registrado${params.length!==1?'s':''}` : '';
+  const container = document.getElementById('lab-content');
+  const btnPDF = document.getElementById('btn-download-pdf');
+  if (params.length === 0) {
+    if (btnPDF) btnPDF.style.display = 'none';
+    container.innerHTML = `<div class="empty"><div class="empty-icon">🧪</div><h3>Nenhum exame laboratorial</h3><p>Faça upload de um PDF para adicionar resultados</p></div>`;
+    return;
+  }
+  if (btnPDF) btnPDF.style.display = '';
+  // Collect all dates
+  const dateSet = new Set();
+  params.forEach(param => {
+    exams[param].forEach(r => dateSet.add(r.date));
+  });
+  // Sort dates chronologically (DD/MM/YYYY → sort as YYYY/MM/DD)
+  const dates = [...dateSet].sort((a,b) => {
+    const pa = a.split('/').reverse().join('');
+    const pb = b.split('/').reverse().join('');
+    return pa.localeCompare(pb);
+  });
+
+  // Group params by logical category
+  const GROUPS = {
+    'Hemograma': ['Hemácias','Hemoglobina','Hematócrito','VCM','HCM','CHCM','RDW','Eritroblastos','Leucócitos','Neutrófilos','Bastonetes','Segmentados','Eosinófilos','Basófilos','Linfócitos','Monócitos','Mielócitos','Metamielócitos','Linfócitos Atípicos','Plasmócitos','Plaquetas','VMP','VPM','PDW','PCT'],
+    'Gasometria': ['pH','pCO2','pO2','HCO3','BE','SatO2','Lactato','Glicose'],
+    'Bioquímica': ['Ureia','Creatinina','TGO (AST)','TGP (ALT)','PCR','Cálcio Total','Bilirrubina Total','Bilirrubina Direta','Bilirrubina Indireta','Albumina','Proteínas Totais','Fosfatase Alcalina','GGT'],
+    'Eletrólitos': ['Sódio','Potássio','Cálcio Iônico','Magnésio','Fósforo','Cloro'],
+    'Inflamatório': ['PCR','Procalcitonina','Ferritina','Fibrinogênio','Dímero-D'],
+    'Coagulação': ['TP - Atividade','INR','TTPA'],
+    'Cardíaco': ['CPK','Troponina','BNP'],
+    'Urinálise': ['Cor (U)','Aspecto (U)','Depósito','Densidade','pH (U)','Proteínas (U)','Glicose (U)','Cetonas','Bilirrubina (U)','Nitrito','Urobilinogênio','Hemoglobina (U)','Est. Leucocitária','Leucócitos (U)','Hemácias (U)','Cél. Epiteliais','Cél. Escamosas','Cél. Não Escamosas','Cél. Transicionais','Cél. Tubulares','Cilindros','Cilindros Hialinos','Cilindros Patol.','Flora Bacteriana','Leveduras','Cristais','Filamentos de Muco','Espermatozoides'],
+    'Culturas': ['Hemocultura','Urocultura','Aspirado Traqueal','Secreção Traqueal','Lavado Broncoalveolar','Escarro','Líquor','Líquido Pleural','Líquido Ascítico','Líquido Sinovial','Líquido','Secreção','Fragmento','Swab','Swab Retal','Swab Nasal','Ponta de Cateter','Coprocultura','Cultura de Fezes'],
+    'Outros': [],
+  };
+
+  // Assign params to groups
+  const assigned = new Set();
+  const groupAssign = {};
+  Object.entries(GROUPS).forEach(([g, list]) => {
+    list.forEach(name => {
+      if (params.includes(name)) {
+        if (!groupAssign[g]) groupAssign[g] = [];
+        groupAssign[g].push(name);
+        assigned.add(name);
+      }
+    });
+  });
+  // Unassigned → Outros
+  params.forEach(p => {
+    if (!assigned.has(p)) {
+      if (!groupAssign['Outros']) groupAssign['Outros'] = [];
+      groupAssign['Outros'].push(p);
+    }
+  });
+
+  // Build table
+  let html = `<div class="exam-wrap"><table class="exam-table">
+    <thead><tr><th>Parâmetro</th>${dates.map(d=>`<th><div class="th-date-wrap">${d}<button class="del-date-btn" onclick="deleteLabDate('${d}')" title="Excluir coleta de ${d}">🗑️</button></div></th>`).join('')}</tr></thead>
+    <tbody>`;
+
+  Object.entries(groupAssign).forEach(([group, pList]) => {
+    if (!pList || pList.length === 0) return;
+    html += `<tr><td colspan="${dates.length+1}" style="background:var(--primary-lt);color:var(--primary);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:5px 12px">${group}</td></tr>`;
+    pList.forEach(param => {
+      const rows = exams[param];
+      // Build a map date→row for quick lookup
+      const dateMap = {};
+      rows.forEach(r => { dateMap[r.date] = r; });
+      const isCulture = rows[0]?.isCulture || false;
+      // Get unit from any entry
+      const unit = rows[0]?.unit || '';
+      html += `<tr><td>${param}${!isCulture && unit ? `<span class="param-unit">${unit}</span>` : ''}</td>`;
+      dates.forEach(d => {
+        const r = dateMap[d];
+        if (!r) { html += `<td class="cell-empty">—</td>`; return; }
+        if (isCulture) {
+          const cls = r.status === 'high' ? 'culture-pos' : 'culture-neg';
+          html += `<td style="padding:5px 8px"><span class="culture-badge ${cls}">${r.valueStr}</span></td>`;
+        } else if (r.isQualitative) {
+          const cls = r.status==='high'?'qual-high':r.status==='low'?'qual-warn':'qual-normal';
+          html += `<td style="padding:5px 8px"><span class="qual-badge ${cls}">${r.valueStr}</span></td>`;
+        } else {
+          const cls = r.status==='high'?'cell-hi':r.status==='low'?'cell-lo':'';
+          html += `<td class="${cls}">${r.valueStr||r.value}</td>`;
+        }
+      });
+      html += `</tr>`;
+    });
+  });
+
+  html += `</tbody></table></div>`;
+  container.innerHTML = html;
+}
+
+function downloadLabPDF() {
+  const p = getPatient(state.unitId, state.patientId);
+  if (!p) return;
+  const u = getUnit(state.unitId);
+  const exams = p.labExams || {};
+  const params = Object.keys(exams);
+  if (params.length === 0) { toast('Nenhum exame para exportar','err'); return; }
+
+  // Collect and sort dates
+  const dateSet = new Set();
+  params.forEach(param => exams[param].forEach(r => dateSet.add(r.date)));
+  const dates = [...dateSet].sort((a,b) => {
+    return a.split('/').reverse().join('').localeCompare(b.split('/').reverse().join(''));
+  });
+
+  // Group params (same categories as renderLabPanel)
+  const GORDER = ['Hemograma','Gasometria','Bioquímica','Eletrólitos','Inflamatório','Coagulação','Cardíaco','Urinálise','Culturas','Outros'];
+  const GMAP = {
+    'Hemograma':['Hemácias','Hemoglobina','Hematócrito','VCM','HCM','CHCM','RDW','Eritroblastos','Leucócitos','Neutrófilos','Bastonetes','Segmentados','Eosinófilos','Basófilos','Linfócitos','Monócitos','Mielócitos','Metamielócitos','Linfócitos Atípicos','Plasmócitos','Plaquetas','VMP','VPM','PDW','PCT'],
+    'Gasometria':['pH','pCO2','pO2','HCO3','BE','SatO2','Lactato','Glicose'],
+    'Bioquímica':['Ureia','Creatinina','TGO (AST)','TGP (ALT)','PCR','Cálcio Total','Bilirrubina Total','Bilirrubina Direta','Bilirrubina Indireta','Albumina','Proteínas Totais','Fosfatase Alcalina','GGT'],
+    'Eletrólitos':['Sódio','Potássio','Cálcio Iônico','Magnésio','Fósforo','Cloro'],
+    'Inflamatório':['PCR','Procalcitonina','Ferritina','Fibrinogênio','Dímero-D'],
+    'Coagulação':['TP - Atividade','INR','TTPA'],
+    'Cardíaco':['CPK','Troponina','BNP'],
+    'Urinálise':['Cor (U)','Aspecto (U)','Depósito','Densidade','pH (U)','Proteínas (U)','Glicose (U)','Cetonas','Bilirrubina (U)','Nitrito','Urobilinogênio','Hemoglobina (U)','Est. Leucocitária','Leucócitos (U)','Hemácias (U)','Cél. Epiteliais','Cél. Escamosas','Cél. Não Escamosas','Cél. Transicionais','Cél. Tubulares','Cilindros','Cilindros Hialinos','Cilindros Patol.','Flora Bacteriana','Leveduras','Cristais','Filamentos de Muco','Espermatozoides'],
+    'Culturas':['Hemocultura','Urocultura','Aspirado Traqueal','Secreção Traqueal','Lavado Broncoalveolar','Escarro','Líquor','Líquido Pleural','Líquido Ascítico','Líquido Sinovial','Líquido','Secreção','Fragmento','Swab','Swab Retal','Swab Nasal','Ponta de Cateter','Coprocultura','Cultura de Fezes'],
+    'Outros':[],
+  };
+  const assigned = new Set();
+  const groupAssign = {};
+  GORDER.forEach(g => {
+    (GMAP[g]||[]).forEach(name => {
+      if (params.includes(name)) {
+        if (!groupAssign[g]) groupAssign[g] = [];
+        groupAssign[g].push(name);
+        assigned.add(name);
+      }
+    });
+  });
+  params.forEach(pp => {
+    if (!assigned.has(pp)) { if (!groupAssign['Outros']) groupAssign['Outros']=[]; groupAssign['Outros'].push(pp); }
+  });
+
+  // Build table rows HTML
+  let rows = '';
+  GORDER.forEach(group => {
+    const pList = groupAssign[group];
+    if (!pList || pList.length === 0) return;
+    rows += `<tr><td colspan="${dates.length+1}" style="background:#e8f0fe;color:#1a3a5c;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.5px;padding:4px 8px">${group}</td></tr>`;
+    pList.forEach(param => {
+      const examRows = exams[param];
+      const dateMap = {};
+      examRows.forEach(r => { dateMap[r.date] = r; });
+      const isCulture = examRows[0]?.isCulture || false;
+      const unit = examRows[0]?.unit || '';
+      rows += `<tr><td style="padding:4px 8px;font-size:11px;border-bottom:1px solid #e0e0e0">${param}${!isCulture && unit ? `<span style="font-size:9px;color:#888;margin-left:3px">${unit}</span>` : ''}</td>`;
+      dates.forEach(d => {
+        const r = dateMap[d];
+        if (!r) { rows += `<td style="text-align:center;color:#bbb;font-size:11px;border-bottom:1px solid #e0e0e0">—</td>`; return; }
+        let cellStyle = 'text-align:center;font-size:11px;font-weight:600;border-bottom:1px solid #e0e0e0;padding:4px 6px';
+        let cellContent = '';
+        if (isCulture) {
+          const bg = r.status==='high' ? '#fee2e2' : '#dcfce7';
+          const col = r.status==='high' ? '#991b1b' : '#166534';
+          cellContent = `<span style="background:${bg};color:${col};padding:2px 5px;border-radius:3px;font-size:9px">${r.valueStr}</span>`;
+        } else if (r.isQualitative) {
+          const col = r.status==='high'?'#dc2626':r.status==='low'?'#d97706':'#16a34a';
+          cellContent = `<span style="color:${col}">${r.valueStr}</span>`;
+        } else {
+          const col = r.status==='high'?'#dc2626':r.status==='low'?'#2563eb':'#111';
+          cellStyle += `;color:${col}`;
+          cellContent = String(r.valueStr||r.value);
+        }
+        rows += `<td style="${cellStyle}">${cellContent}</td>`;
+      });
+      rows += `</tr>`;
+    });
+  });
+
+  // Build print HTML
+  const now = new Date().toLocaleDateString('pt-BR');
+  const admStr = p.dataAdmissao ? `Admissão: ${p.dataAdmissao}` : '';
+  const dxStr = p.diagnostico ? `Diagnóstico: ${p.diagnostico}` : '';
+  const colW = Math.max(60, Math.min(90, Math.floor(550 / dates.length)));
+  const thCols = dates.map(d => `<th style="min-width:${colW}px;text-align:center;padding:5px 4px;border-bottom:2px solid #1a3a5c;font-size:10px;color:#1a3a5c;white-space:nowrap">${d}</th>`).join('');
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Exames — ${p.nome||'Paciente'}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #111; }
+  .header { padding: 14px 20px 10px; border-bottom: 2px solid #1a3a5c; margin-bottom: 12px; }
+  .header h1 { font-size: 16px; color: #1a3a5c; margin-bottom: 4px; }
+  .header .meta { display: flex; gap: 24px; font-size: 10px; color: #555; flex-wrap: wrap; }
+  .footer { text-align: right; font-size: 9px; color: #999; padding: 8px 20px; margin-top: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th:first-child, td:first-child { text-align: left; min-width: 130px; max-width: 180px; padding: 4px 8px; border-bottom: 1px solid #e0e0e0; font-size: 11px; }
+  @page { size: landscape; margin: 12mm 10mm; }
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head><body>
+<div class="header">
+  <h1>${p.nome||'Paciente'}${p.leito ? ` — Leito ${p.leito}` : ''}</h1>
+  <div class="meta">
+    ${p.idade ? `<span>Idade: ${p.idade}</span>` : ''}
+    ${admStr ? `<span>${admStr}</span>` : ''}
+    ${dxStr ? `<span>${dxStr}</span>` : ''}
+    ${u ? `<span>Unidade: ${u.name||''}</span>` : ''}
+  </div>
+</div>
+<table>
+  <thead><tr>
+    <th style="text-align:left;padding:5px 8px;border-bottom:2px solid #1a3a5c;font-size:11px;color:#1a3a5c;min-width:130px">Parâmetro</th>
+    ${thCols}
+  </tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="footer">clinBoard — Gestão de Exames &nbsp;|&nbsp; Exportado em ${now}</div>
+<script>window.onload=function(){window.print();}<\/script>
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) { toast('Permita pop-ups para gerar o PDF','err'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
+function renderImgPanel() {
+  const p = getPatient(state.unitId, state.patientId);
+  if (!p) return;
+  const imgs = (p.imagingExams||[]).sort((a,b)=>{
+    const pa = a.date.split('/').reverse().join('');
+    const pb = b.date.split('/').reverse().join('');
+    return pa.localeCompare(pb);
+  });
+  document.getElementById('img-info').textContent =
+    imgs.length > 0 ? `${imgs.length} exame${imgs.length!==1?'s':''} registrado${imgs.length!==1?'s':''}` : '';
+  const container = document.getElementById('img-content');
+  if (imgs.length === 0) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">🔬</div><h3>Nenhum exame de imagem</h3><p>Faça upload de um PDF para registrar um exame</p></div>`;
+    return;
+  }
+  const ICONS = {'TC':'🫁','RX':'📷','USG':'🔊','RNM':'🧲','ECO':'❤️','END':'🔭','COL':'🔭','default':'📋'};
+  const getIcon = t => {
+    for (const [k,v] of Object.entries(ICONS)) if (t.toUpperCase().includes(k)) return v;
+    return ICONS.default;
+  };
+  container.innerHTML = `<div class="img-list">${imgs.map(im=>`
+    <div class="img-item">
+      <div class="img-icon">${getIcon(im.type)}</div>
+      <div class="img-info">
+        <div class="img-type">${im.type}</div>
+        <div class="img-date">📅 ${im.date}</div>
+        ${im.filename?`<div class="img-file">📎 ${im.filename}</div>`:''}
+      </div>
+      <button class="icon-btn del" onclick="deleteImaging('${im.id}')" title="Excluir">🗑️</button>
+    </div>`).join('')}</div>`;
+}
+
+// ======================================================================
+// UNIT CRUD
+// ======================================================================
+let editingUnitId = null;
+
+function openUnitModal(id) {
+  editingUnitId = id || null;
+  document.getElementById('modal-unit-title').textContent = id ? 'Editar Unidade' : 'Nova Unidade';
+  document.getElementById('inp-unit-name').value = id ? (getUnit(id)?.name||'') : '';
+  openModal('modal-unit');
+  setTimeout(()=>document.getElementById('inp-unit-name').focus(),100);
+}
+
+function saveUnit() {
+  const name = document.getElementById('inp-unit-name').value.trim();
+  if (!name) { toast('Informe o nome da unidade','err'); return; }
+  if (editingUnitId) {
+    const u = getUnit(editingUnitId);
+    if (u) u.name = name;
+  } else {
+    db.units.push({ id:uid(), name, patients:[] });
+  }
+  saveDB(); closeModal('modal-unit'); renderHome();
+  toast(editingUnitId ? 'Unidade atualizada' : 'Unidade criada ✓','ok');
+}
+
+function deleteUnit(id) {
+  const u = getUnit(id);
+  if (!u) return;
+  confirm2(`Excluir a unidade "${u.name}" e todos os seus pacientes?`, ()=>{
+    db.units = db.units.filter(x=>x.id!==id);
+    saveDB(); renderHome(); toast('Unidade excluída');
+  });
+}
+
+// ======================================================================
+// PATIENT CRUD
+// ======================================================================
+let editingPatientId = null;
+
+function openPatientModal(id) {
+  editingPatientId = id || null;
+  document.getElementById('modal-pt-title').textContent = id ? 'Editar Paciente' : 'Novo Paciente';
+  const p = id ? getPatient(state.unitId, id) : null;
+  document.getElementById('inp-leito').value = p?.leito||'';
+  document.getElementById('inp-idade').value = p?.idade||'';
+  document.getElementById('inp-nome').value = p?.nome||'';
+  document.getElementById('inp-admissao').value = p?.dataAdmissao||'';
+  document.getElementById('inp-diag').value = p?.diagnostico||'';
+  openModal('modal-patient');
+  setTimeout(()=>document.getElementById('inp-leito').focus(),100);
+}
+
+function savePatient() {
+  const leito = document.getElementById('inp-leito').value.trim();
+  const nome = document.getElementById('inp-nome').value.trim();
+  if (!leito||!nome) { toast('Leito e nome são obrigatórios','err'); return; }
+  const u = getUnit(state.unitId);
+  if (!u) return;
+  if (editingPatientId) {
+    const p = getPatient(state.unitId, editingPatientId);
+    if (p) { p.leito=leito;p.nome=nome;p.idade=document.getElementById('inp-idade').value.trim();p.dataAdmissao=document.getElementById('inp-admissao').value;p.diagnostico=document.getElementById('inp-diag').value.trim(); }
+  } else {
+    u.patients.push({ id:uid(), leito, nome, idade:document.getElementById('inp-idade').value.trim(), dataAdmissao:document.getElementById('inp-admissao').value, diagnostico:document.getElementById('inp-diag').value.trim(), status:'ativo', labExams:{}, imagingExams:[] });
+  }
+  saveDB(); closeModal('modal-patient');
+  if (state.view==='unit') renderUnit();
+  else if (state.view==='patient') renderPatient();
+  toast(editingPatientId?'Paciente atualizado':'Paciente adicionado ✓','ok');
+}
+
+function archivePatient(id) {
+  confirm2('Registrar alta do paciente? Os dados serão arquivados.', ()=>{
+    const p = getPatient(state.unitId, id);
+    if (p) { p.status='arquivado'; p.dataAlta=new Date().toISOString().slice(0,10); }
+    saveDB();
+    if (state.view==='unit') renderUnit();
+    else if (state.view==='patient') renderPatient();
+    toast('Paciente arquivado (alta)');
+  });
+}
+
+function unarchivePatient(id) {
+  const p = getPatient(state.unitId, id);
+  if (p) { p.status='ativo'; p.dataAlta=null; }
+  saveDB();
+  if (state.view==='unit') renderUnit();
+  else if (state.view==='patient') renderPatient();
+  toast('Paciente reativado ✓','ok');
+}
+
+function deletePatient(id) {
+  const p = getPatient(state.unitId, id);
+  if (!p) return;
+  confirm2(`Excluir o paciente "${p.nome}" e todos os seus exames?`, ()=>{
+    const u = getUnit(state.unitId);
+    if (u) u.patients = u.patients.filter(x=>x.id!==id);
+    saveDB();
+    if (state.view==='patient') { goUnit(state.unitId); }
+    else renderUnit();
+    toast('Paciente excluído');
+  });
+}
+
+let transferPatientId = null;
+let transferSourceUnitId = null;
+
+function openTransferModal(patId, srcUnitId) {
+  const p = getPatient(srcUnitId, patId);
+  if (!p) return;
+  transferPatientId = patId;
+  transferSourceUnitId = srcUnitId;
+  document.getElementById('transfer-patient-name').textContent = `${p.nome}  —  Leito ${p.leito}`;
+  document.getElementById('transfer-leito').value = '';
+  // Populate destination units (exclude source)
+  const sel = document.getElementById('transfer-unit-sel');
+  const otherUnits = db.units.filter(u => u.id !== srcUnitId);
+  if (otherUnits.length === 0) {
+    toast('Nenhuma outra unidade cadastrada','err'); return;
+  }
+  sel.innerHTML = otherUnits.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+  openModal('modal-transfer');
+  setTimeout(()=>document.getElementById('transfer-leito').focus(), 100);
+}
+
+function confirmTransfer() {
+  const destUnitId = document.getElementById('transfer-unit-sel').value;
+  const novoLeito = document.getElementById('transfer-leito').value.trim();
+  const srcUnit = getUnit(transferSourceUnitId);
+  const destUnit = getUnit(destUnitId);
+  const p = getPatient(transferSourceUnitId, transferPatientId);
+  if (!srcUnit || !destUnit || !p) return;
+  // Move patient: remove from source, add to destination
+  srcUnit.patients = srcUnit.patients.filter(x => x.id !== transferPatientId);
+  if (novoLeito) p.leito = novoLeito;
+  if (!destUnit.patients) destUnit.patients = [];
+  destUnit.patients.push(p);
+  saveDB();
+  closeModal('modal-transfer');
+  toast(`${p.nome} transferido para ${destUnit.name} ✓`, 'ok');
+  // Navigate back to the source unit view
+  if (state.view === 'patient') { goUnit(transferSourceUnitId); }
+  else { renderUnit(); }
+}
+
+function deleteImaging(imgId) {
+  confirm2('Excluir este exame de imagem?', ()=>{
+    const p = getPatient(state.unitId, state.patientId);
+    if (p) p.imagingExams = p.imagingExams.filter(i=>i.id!==imgId);
+    saveDB(); renderImgPanel(); toast('Exame excluído');
+  });
+}
+
+function deleteLabDate(date) {
+  confirm2(`Excluir todos os resultados de ${date}?`, ()=>{
+    const p = getPatient(state.unitId, state.patientId);
+    if (!p) return;
+    Object.keys(p.labExams||{}).forEach(param => {
+      p.labExams[param] = p.labExams[param].filter(r => r.date !== date);
+      if (p.labExams[param].length === 0) delete p.labExams[param];
+    });
+    saveDB(); renderLabPanel(); toast('Coleta excluída');
+  });
+}
+
+// ======================================================================
+// PDF PARSING
+// ======================================================================
+async function extractPDFText(file) {
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  let text = '';
+  for (let pg = 1; pg <= pdf.numPages; pg++) {
+    const page = await pdf.getPage(pg);
+    const content = await page.getTextContent();
+    // Group by Y to reconstruct lines
+    const yMap = {};
+    for (const item of content.items) {
+      const y = Math.round(item.transform[5] / 4) * 4;
+      if (!yMap[y]) yMap[y] = [];
+      yMap[y].push({ x: item.transform[4], s: item.str });
+    }
+    const lines = Object.keys(yMap)
+      .map(Number).sort((a,b)=>b-a)
+      .map(y => {
+        const items = yMap[y].sort((a,b)=>a.x-b.x);
+        let result = '';
+        for (let k=0; k<items.length; k++) {
+          if (k>0) {
+            // Estimate visual gap; large gap → preserve as extra spaces for parser
+            // gap < 2 → adjacent items split by font change only (e.g. /mm and ³); join directly
+            const gap = items[k].x - items[k-1].x - (items[k-1].s.length * 4.5);
+            result += gap < 2 ? '' : gap > 40 ? '   ' : gap > 14 ? '  ' : ' ';
+          }
+          result += items[k].s;
+        }
+        return result.trim();
+      })
+      .filter(l=>l.length>0);
+    text += lines.join('\n') + '\n';
+  }
+  return text;
+}
+
+function detectFormat(text) {
+  if (/HUGO|Urgências de Goiás|Albert Einstein/i.test(text)) return 'HUGO';
+  if (/CITOMED|citomed\.com/i.test(text)) return 'CITOMED';
+  if (/BIOCENTRO|biocentrolab/i.test(text)) return 'BIOCENTRO';
+  if (/SÃO\s+PIO\s*X|PIOX|Pio\s*X|São\s+Pio/i.test(text)) return 'PIOX';
+  return 'GENERIC';
+}
+
+function pNum(s) {
+  if (!s) return null;
+  let str = String(s).replace(/[<>≤≥\s]/g,'').trim();
+  if (!str) return null;
+  // Both . and , present: Portuguese format (. = thousands, , = decimal)
+  if (str.includes(',') && str.includes('.')) {
+    const n = parseFloat(str.replace(/\./g,'').replace(',','.'));
+    return isNaN(n) ? null : n;
+  }
+  // Only , present: , is decimal separator
+  if (str.includes(',')) {
+    const n = parseFloat(str.replace(',','.'));
+    return isNaN(n) ? null : n;
+  }
+  // Only . present — use digit count after last dot to decide:
+  // exactly 3 digits after last . → thousands separator (e.g. 4.500 → 4500)
+  // otherwise → decimal point (e.g. 6.8 → 6.8, 7.62 → 7.62)
+  const dotIdx = str.lastIndexOf('.');
+  if (dotIdx >= 0) {
+    const afterDot = str.slice(dotIdx + 1);
+    if (afterDot.length === 3 && /^\d+$/.test(afterDot)) {
+      const n = parseFloat(str.replace(/\./g,''));
+      return isNaN(n) ? null : n;
+    }
+  }
+  const n = parseFloat(str);
+  return isNaN(n) ? null : n;
+}
+
+function parseRef(s) {
+  if (!s) return {refMin:null,refMax:null};
+  let m = s.match(/([0-9][0-9.,]*)\s*[-–]\s*([0-9][0-9.,]*)/);
+  if (m) return {refMin:pNum(m[1]),refMax:pNum(m[2])};
+  m = s.match(/([0-9][0-9.,]*)\s+[aA]\s+([0-9][0-9.,]*)/);
+  if (m) return {refMin:pNum(m[1]),refMax:pNum(m[2])};
+  m = s.match(/([0-9][0-9.,]*)\s+[aA]\s+([0-9][0-9.,]*)/);
+  if (m) return {refMin:pNum(m[1]),refMax:pNum(m[2])};
+  m = s.match(/(?:[Ii]nferior\s+a|[Aa]té|<)\s*([0-9][0-9.,]*)/);
+  if (m) return {refMin:0,refMax:pNum(m[1])};
+  m = s.match(/(?:[Ss]uperior\s+a|>)\s*([0-9][0-9.,]*)/);
+  if (m) return {refMin:pNum(m[1]),refMax:null};
+  return {refMin:null,refMax:null};
+}
+
+function getStatus(v,mn,mx) {
+  if (v===null) return 'unknown';
+  if (mx!==null && v>mx) return 'high';
+  if (mn!==null && v<mn) return 'low';
+  if (mn===null && mx===null) return 'unknown';
+  return 'normal';
+}
+
+function findDate(text, format) {
+  let m;
+  m = text.match(/[Cc]oletado?\s*\(?\s*(\d{2}\/\d{2}\/\d{4})/);
+  if (m) return m[1];
+  m = text.match(/\[\s*[Cc]oleta\s*:\s*(\d{2}\/\d{2}\/\d{4})/);
+  if (m) return m[1];
+  m = text.match(/[Cc]oleta[.…]*\s*:\s*(\d{2}\/\d{2}\/\d{4})/);
+  if (m) return m[1];
+  m = text.match(/[Dd]ata\s+de\s+[Cc]oleta\s*:\s*(\d{2}\/\d{2}\/\d{4})/);
+  if (m) return m[1];
+  m = text.match(/(\d{2}\/\d{2}\/\d{4})/);
+  if (m) return m[1];
+  return new Date().toLocaleDateString('pt-BR');
+}
+
+// Normalize exam name to consistent label
+const NAME_MAP = {
+  'HEMOGLOBINA':'Hemoglobina','HEMOGLOBINAS':'Hemoglobina',
+  'HEMATOCRITO':'Hematócrito','HEMATÓCRITO':'Hematócrito',
+  'HEMACIAS':'Hemácias','HEMÁCIAS':'Hemácias','HEMACIA':'Hemácias',
+  'LEUCOCITOS':'Leucócitos','LEUCÓCITOS':'Leucócitos',
+  'PLAQUETAS':'Plaquetas','VCM':'VCM','HCM':'HCM','CHCM':'CHCM','RDW':'RDW',
+  'VMP':'VMP','VPM':'VPM','MPV':'VMP','PDW':'PDW','PCT':'PCT',
+  'BASTONETES':'Bastonetes','SEGMENTADOS':'Segmentados',
+  'LINFOCITOS':'Linfócitos','LINFÓCITOS':'Linfócitos',
+  'MONOCITOS':'Monócitos','MONÓCITOS':'Monócitos',
+  'EOSINOFILOS':'Eosinófilos','EOSINÓFILOS':'Eosinófilos',
+  'BASOFILOS':'Basófilos','BASÓFILOS':'Basófilos',
+  'NEUTROFILOS TOTAIS':'Neutrófilos','NEUTRÓFILOS':'Neutrófilos',
+  'NEUTROFILOS':'Neutrófilos','METAMIELOCITOS':'Metamielócitos','METAMIELÓCITOS':'Metamielócitos',
+  'MIELOCITOS':'Mielócitos','MIELÓCITOS':'Mielócitos',
+  'CREATININA':'Creatinina','UREIA':'Ureia','URÉIA':'Ureia','UREA':'Ureia',
+  'SODIO':'Sódio','SÓDIO':'Sódio',
+  'POTASSIO':'Potássio','POTÁSSIO':'Potássio',
+  'CALCIO IONICO':'Cálcio Iônico','CÁLCIO IÔNICO':'Cálcio Iônico',
+  'CALCIO IONICO ARTERIAL':'Cálcio Iônico','CÁLCIO IÔNICO ARTERIAL':'Cálcio Iônico',
+  'MAGNESIO':'Magnésio','MAGNÉSIO':'Magnésio',
+  'FOSFORO':'Fósforo','FÓSFORO':'Fósforo',
+  'BILIRRUBINA TOTAL':'Bilirrubina Total','BILIRRUBINA DIRETA':'Bilirrubina Direta',
+  'BILIRRUBINA INDIRETA':'Bilirrubina Indireta',
+  'PROTEINA C REATIVA':'PCR','PROTEÍNA C REATIVA':'PCR','PCR':'PCR',
+  'PROTEINA C REATIVA (PCR)':'PCR','PROTEÍNA C REATIVA (PCR)':'PCR',
+  'PROTEINA C REATIVA QUANTITATIVA':'PCR','PROTEÍNA C REATIVA QUANTITATIVA':'PCR',
+  'PROTEINA C REATIVA ULTRASSENSIVEL':'PCR','PROTEÍNA C REATIVA ULTRASSENSÍVEL':'PCR',
+  'TGO':'TGO (AST)','TGP':'TGP (ALT)','AST':'TGO (AST)','ALT':'TGP (ALT)',
+  'TGO (AST)':'TGO (AST)','TGP (ALT)':'TGP (ALT)',
+  'ATIVIDADE':'TP - Atividade','RNI':'INR','INR':'INR',
+  'TEMPO DE PROTROMBINA':'TP (segundos)','TP':'TP - Atividade',
+  'TEMPO DE TROMBOPLASTINA PARCIAL ATIVADO':'TTPA','TTPA':'TTPA',
+  'TEMPO DE TROMBOPLASTINA PARCIAL':'TTPA',
+  'PH':'pH','PCO2':'pCO2','PO2':'pO2','TCO2':'TCO2','HCO3':'HCO3',
+  'BE':'BE','SO2':'SatO2','O2SAT':'SatO2','SATURACAO DE O2':'SatO2',
+  'SATURAÇÃO DE O2':'SatO2','SATURACAO O2':'SatO2','SATURAÇÃO O2':'SatO2',
+  'LACTATO':'Lactato','LACTATO ARTERIAL':'Lactato',
+  'GLICOSE':'Glicose','GLICEMIA':'Glicose','GLUCOSE':'Glicose','GLI':'Glicose',
+  'HEMOGLOBINA GLICADA':'HbA1c',
+  'TROPONINA':'Troponina','CPK':'CPK','CK':'CPK','CREATINOFOSFOQUINASE':'CPK',
+  'BNP':'BNP','PROCALCITONINA':'Procalcitonina',
+  'FIBRINOGENIO':'Fibrinogênio','FIBRINOGÊNIO':'Fibrinogênio',
+  'DIMERO D':'Dímero-D','DÍMERO D':'Dímero-D','D-DIMERO':'Dímero-D',
+  'ALBUMINA':'Albumina','PROTEINAS TOTAIS':'Proteínas Totais','PROTEÍNAS TOTAIS':'Proteínas Totais',
+  'GGT':'GGT','FOSFATASE ALCALINA':'Fosfatase Alcalina',
+  'FERRITINA':'Ferritina','FERRO SERICO':'Ferro Sérico','FERRO SÉRICO':'Ferro Sérico',
+  'TSH':'TSH','T4 LIVRE':'T4 Livre','T3 LIVRE':'T3 Livre',
+  'UREIA':'Ureia','CLORO':'Cloro',
+  'ERITROBLASTOS':'Eritroblastos',
+  // Variantes com "DOSAGEM DE" (padrão HUGO)
+  'DOSAGEM DE CREATININA':'Creatinina','DOSAGEM DE CREATININA TLR':'Creatinina',
+  'DOSAGEM DE GLICOSE':'Glicose','DOSAGEM DE UREIA':'Ureia','DOSAGEM DE URÉIA':'Ureia',
+  'DOSAGEM DE SÓDIO':'Sódio','DOSAGEM DE SODIO':'Sódio',
+  'DOSAGEM DE POTÁSSIO':'Potássio','DOSAGEM DE POTASSIO':'Potássio',
+  'DOSAGEM DE MAGNÉSIO':'Magnésio','DOSAGEM DE MAGNESIO':'Magnésio',
+  'DOSAGEM DE CÁLCIO IÔNICO':'Cálcio Iônico','DOSAGEM DE CALCIO IONICO':'Cálcio Iônico',
+  'DOSAGEM DE FOSFATASE ALCALINA':'Fosfatase Alcalina',
+  'DOSAGEM DE TGO (AST)':'TGO (AST)','DOSAGEM DE TGP (ALT)':'TGP (ALT)',
+  'DOSAGEM DE TGO':'TGO (AST)','DOSAGEM DE TGP':'TGP (ALT)',
+  'DOSAGEM DE ALBUMINA':'Albumina','DOSAGEM DE PROTEÍNAS TOTAIS':'Proteínas Totais',
+  'DOSAGEM DE BILIRRUBINAS TOTAIS E FRAÇÕES':'Bilirrubina Total',
+  'DOSAGEM DE BILIRRUBINAS TOTAIS':'Bilirrubina Total',
+  'DOSAGEM DE ÁCIDO ÚRICO':'Ácido Úrico','DOSAGEM DE ACIDO URICO':'Ácido Úrico',
+  'DOSAGEM DE PCR':'PCR','DOSAGEM DE PROCALCITONINA':'Procalcitonina',
+  'DOSAGEM DE FERRITINA':'Ferritina','DOSAGEM DE FIBRINOGÊNIO':'Fibrinogênio',
+  'DOSAGEM DE LACTATO':'Lactato','DOSAGEM DE LIPASE':'Lipase','DOSAGEM DE AMILASE':'Amilase',
+  // Nomes alternativos de enzimas
+  'ALANINA AMINO TRANSFERASE (TGP/ALT)':'TGP (ALT)','ALANINA AMINOTRANSFERASE':'TGP (ALT)',
+  'ASPARTATO AMINO TRANSFERASE (TGO/AST)':'TGO (AST)','ASPARTATO AMINOTRANSFERASE':'TGO (AST)',
+  'TGO -TRANSAMINASE OXALACETICA':'TGO (AST)','TGO - TRANSAMINASE OXALACETICA':'TGO (AST)',
+  'TGP - TRANSAMINASE PIRUVICA':'TGP (ALT)','TGP -TRANSAMINASE PIRUVICA':'TGP (ALT)',
+  'TRANSAMINASE GLUTÂMICO OXALACÉTICA (TGO)':'TGO (AST)',
+  'TRANSAMINASE PIRUVICA (TGP)':'TGP (ALT)',
+  'GAMA GLUTAMIL TRANSFERASE (GAMA GT)':'GGT','GAMMA-GLUTAMIL TRANSFERASE (Y-GT)':'GGT',
+  'GAMA-GLUTAMILTRANSFERASE':'GGT','GAMA GT':'GGT','GAMA-GT':'GGT',
+  // Qualificadores séricos
+  'SÓDIO SÉRICO':'Sódio','SODIO SERICO':'Sódio',
+  'POTÁSSIO SÉRICO':'Potássio','POTASSIO SERICO':'Potássio',
+  'MAGNÉSIO SÉRICO':'Magnésio','MAGNESIO SERICO':'Magnésio',
+  // Variantes de cálcio
+  'CÁLCIO IÔNICO VENOSO':'Cálcio Iônico','CALCIO IONICO VENOSO':'Cálcio Iônico',
+  'CÁLCIO':'Cálcio Total','CALCIO':'Cálcio Total',
+  // Bilirrubina
+  'BILIRRUBINA TOTAL E FRAÇÕES':'Bilirrubina Total',
+  'BILIRRUBINA TOTAL (RECEM NASCIDOS)':'Bilirrubina Total',
+  'BILIRRUBINAS':'Bilirrubina Total','BILIRRUIBINA':'Bilirrubina Total',
+  // Dímero-D
+  'D DÍMERO':'Dímero-D','D-DÍMERO':'Dímero-D','DÍMERO-D':'Dímero-D','D DIMERO':'Dímero-D',
+  // Coagulação
+  'TEMPO DE ATIVIDADE DA PROTROMBINA - TAP':'TP - Atividade','TAP':'TP - Atividade',
+  'TEMPO DE TROMBOPLASTINA PARCIAL ATIVADO (TTPA)':'TTPA',
+  'TEMPO DE TROMBOPLASTINA PARCIAL ATIVADO - TTPA':'TTPA',
+  // Troponina
+  'TROPONINA QUANTITATIVA':'Troponina','TROPONINA I':'Troponina','TROPONINA T':'Troponina',
+  'TROPONINA I QUANTITATIVA':'Troponina','TROPONINA T QUANTITATIVA':'Troponina',
+  // Lactato
+  'LACTATO VENOSO':'Lactato',
+  // Urina
+  'DENSIDADE':'Densidade','PH URINARIO':'pH Urinário','PH URINÁRIO':'pH Urinário',
+  'PROTEINA TOTAL URINA':'Proteína Urinária','PROTEÍNA TOTAL URINA':'Proteína Urinária',
+  'MICROALBUMINURIA':'Microalbuminúria','MICROALBUMINÚRIA':'Microalbuminúria',
+  'CREATININA URINA':'Creatinina Urinária','PROTEINA CREATININA':'Relação Prot/Creat',
+  // Outros comuns
+  'ACIDO URICO':'Ácido Úrico','ÁCIDO ÚRICO':'Ácido Úrico',
+  'AMILASE':'Amilase','LIPASE':'Lipase',
+  'LDH':'LDH','DHL':'LDH',
+  'DESIDROGENASE LACTICA':'LDH','DESIDROGENASE LÁCTICA':'LDH',
+  'DESIDROGENASE LÁTICA':'LDH','DESIDROGENASE LATICA':'LDH',
+  'LACTATO DESIDROGENASE':'LDH','LACTATODESIDROGENASE':'LDH',
+  'DOSAGEM DE LDH':'LDH','DOSAGEM DE DHL':'LDH',
+  'VITAMINA B12':'Vitamina B12','VITAMINA D':'Vitamina D','VITAMINA D 25':'Vitamina D',
+  '25-OH VITAMINA D':'Vitamina D',
+  'COLESTEROL TOTAL':'Colesterol Total','COLESTEROL HDL':'HDL','COLESTEROL LDL':'LDL',
+  'HDL':'HDL','LDL':'LDL','VLDL':'VLDL','TRIGLICERIDES':'Triglicérides','TRIGLICÉRIDES':'Triglicérides',
+  'FOSFORO':'Fósforo','FÓSFORO':'Fósforo',
+  'PARATORMONIO':'PTH','PARATORMÔNIO':'PTH','PTH':'PTH',
+  'INSULINA':'Insulina','PEPTIDEO C':'Peptídeo C','PEPTÍDEO C':'Peptídeo C',
+  'CORTISOL':'Cortisol','PROLACTINA':'Prolactina',
+  'PSA TOTAL':'PSA Total','PSA':'PSA Total',
+  'BILIRRUBINA FRAÇÕES':'Bilirrubina Total',
+  'ERITRÓCITOS':'Hemácias','ERITROCITOS':'Hemácias',
+  'HB':'Hemoglobina','HBG':'Hemoglobina',
+  'HT':'Hematócrito','HTC':'Hematócrito',
+  'PLT':'Plaquetas',
+  // Pio X hemograma — nomes completos com abreviações por pontos
+  'HEMOGLOBINAS':'Hemoglobina','HEMATOCRITO':'Hematócrito',
+  'VCM':'VCM','HCM':'HCM','CHCM':'CHCM','RDW':'RDW',
+  'PDW':'PDW','PCT':'PCT','VPM':'VPM',
+  'LEUCOCITOS':'Leucócitos','LINFOCITOS':'Linfócitos',
+  'MONOCITOS':'Monócitos','EOSINOFILOS':'Eosinófilos','EOSINÓFILOS':'Eosinófilos',
+  'BASOFILOS':'Basófilos','BASÓFILOS':'Basófilos',
+  'MIELOCITOS':'Mielócitos','MIELÓCITOS':'Mielócitos',
+  'METAMIELOCITOS':'Metamielócitos','METAMIELÓCITOS':'Metamielócitos',
+  'NEUTR.TOTAIS':'Neutrófilos','NEUTROFILOS TOTAIS':'Neutrófilos',
+  'NEUTRÓFILOS TOTAIS':'Neutrófilos',
+  'LINF.ATIPICOS':'Linfócitos Atípicos','LINF.ATÍPICOS':'Linfócitos Atípicos',
+  'PLASMOCITOS':'Plasmócitos','PLASMÓCITOS':'Plasmócitos',
+  // Pio X bioquímica
+  'UREIA':'Ureia','URÉIA':'Ureia',
+  'CREATININA':'Creatinina',
+  'CÁLCIO':'Cálcio Total','CALCIO':'Cálcio Total',
+  // Pio X EAS 3-colunas (parâmetros em maiúsculas)
+  'PROTEÍNA (ALBUMINA)':'Proteínas (U)','PROTEINA (ALBUMINA)':'Proteínas (U)',
+  'CETONA':'Cetonas','BILIRRUBINA':'Bilirrubina (U)',
+  'UROBILINOGÊNIO':'Urobilinogênio','UROBILINOGENIO':'Urobilinogênio',
+  'ESTERASE LEUCOCITÁRIA':'Est. Leucocitária','ESTERASE LEUCOCITARIA':'Est. Leucocitária',
+  'CELULAS EPITELIAIS':'Cél. Epiteliais','CÉLULAS EPITELIAIS':'Cél. Epiteliais',
+  'LEVEDURAS':'Leveduras','CILINDROS':'Cilindros','CRISTAIS':'Cristais',
+};
+
+// PARAM_WHITELIST: conjunto de todos os nomes canônicos conhecidos
+// Construído dinamicamente a partir dos valores do NAME_MAP
+const PARAM_WHITELIST = new Set([
+  ...Object.values(NAME_MAP),
+  // Extras não cobertos como valores do NAME_MAP
+  'TP (segundos)','Cálcio Total',
+  // Culturas (valores de CULTURE_TYPES são adicionados depois que o objeto é definido)
+]);
+
+function normName(raw) {
+  const u = raw.trim().toUpperCase().replace(/\s+/g,' ');
+  if (NAME_MAP[u]) return NAME_MAP[u];
+  // partial match
+  for (const [k,v] of Object.entries(NAME_MAP)) {
+    if (u === k) return v;
+  }
+  // Title case fallback
+  return raw.trim().replace(/\w\S*/g, t => t.charAt(0).toUpperCase()+t.slice(1).toLowerCase());
+}
+
+// Lines to skip
+function skipLine(line) {
+  return /^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido\s|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica)/i.test(line.trim());
+}
+
+// Known multi-parameter section headers
+const MULTI_SECTIONS = [
+  'HEMOGRAMA','ERITROGRAMA','LEUCOGRAMA','PLAQUETOGRAMA','SÉRIE ERITROCITÁRIA','SÉRIE LEUCOCITÁRIA','SÉRIE PLAQUETÁRIA',
+  'GASOMETRIA ARTERIAL','GASOMETRIA','COAGULOGRAMA','ROTINA DE URINA','ROTINA DE LÍQUOR','URINÁLISE',
+  'LÍQUOR','CITOMETRIA','CITOLOGIA',
+];
+
+function isMultiHeader(line) {
+  const t = line.trim().toUpperCase();
+  return MULTI_SECTIONS.some(s => t === s || t.startsWith(s));
+}
+
+// Parse multi-parameter rows: "PARAM_NAME : VALUE UNIT   MIN - MAX UNIT"
+// Many variations
+function parseParamRow(line) {
+  const t = line.trim();
+
+  // Skip separator or section rows
+  if (/^[-=*]+$/.test(t)) return null;
+  if (skipLine(t)) return null;
+  if (t.length < 3) return null;
+
+  // ─── Pio X leucogram format ───────────────────────────────────────────────
+  // "Leucócitos....: 100 % 9.000 /mm³   100 %          4.500 a 10.000 /mm³"
+  // "Bastonetes....: 1 % 90 /mm³        1 a 5 %        45 a 500 /mm³"
+  // "Linf.Atípicos.: 0 %  0 /mm³        0 %            0 /mm³"  (zero, no range)
+  // Extracts: name + absolute count + absolute reference range (range optional)
+  const reLeu = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\.]*?)[\s.:]+\d+[.,]?\d*\s+%\s+([0-9.,]+)\s*\/mm[³3](?:\s+.*?([0-9.,]+)\s+a\s+([0-9.,]+)\s*\/mm[³3])?/i;
+  let m = t.match(reLeu);
+  if (m) {
+    const name = m[1].trim();
+    if (name.length >= 2 && name.length <= 50) {
+      const val = pNum(m[2]);
+      const refMin = m[3] ? pNum(m[3]) : null;
+      const refMax = m[4] ? pNum(m[4]) : null;
+      if (val !== null) {
+        return {name:normName(name), value:val, valueStr:m[2], unit:'/mm³', refMin, refMax};
+      }
+    }
+  }
+
+  // ─── Pattern: NAME VALUE UNIT   MIN - MAX or MIN a MAX ────────────────────
+  // Covers: "Hemoglobina: 14,3 g/dL   13,5 - 17,5 g/dL"
+  //         "Hemácias......: 4,48 tera/L   4,5 a 6,0 tera/L"
+  //         "VCM...........: 85,9 fl   80,0 a 100,0"
+  //         "PH : 7,34   7,35 A 7,45"
+  const re = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\+\-\/\.]*?)[\s.:]+([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^0-9·*]+)?\s{2,}([0-9][0-9.,]*)\s*(?:[-–aA]|[Aa])\s*([0-9][0-9.,]*)/;
+  m = t.match(re);
+  if (m) {
+    const name = m[1].trim();
+    if (name.length < 2 || name.length > 50) return null;
+    const val = pNum(m[2]);
+    const unit = (m[3]||'').trim();
+    const {refMin,refMax} = {refMin:pNum(m[4]),refMax:pNum(m[5])};
+    if (val===null) return null;
+    return {name:normName(name),value:val,valueStr:m[2],unit,refMin,refMax};
+  }
+
+  // ─── Pattern with < upper-bound ref ──────────────────────────────────────
+  // Covers: "RDW...........: 12,0 %        < 16,0 %"
+  //         "Plaquetas: 150 x10³/µL   < 400"
+  const reLt = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\+\-\/\.]*?)[\s.:]+([−\-]?[0-9][0-9.,]*)\s{0,3}([a-zA-Zµ%\/~³^0-9·*]+)?\s{2,}<\s*([0-9][0-9.,]*)/;
+  m = t.match(reLt);
+  if (m) {
+    const name = m[1].trim();
+    if (name.length >= 2 && name.length <= 50) {
+      const val = pNum(m[2]);
+      const unit = (m[3]||'').trim();
+      const refMax = pNum(m[4]);
+      if (val !== null) {
+        return {name:normName(name), value:val, valueStr:m[2], unit, refMin:0, refMax};
+      }
+    }
+  }
+
+  // ─── Pattern without ref ─────────────────────────────────────────────────
+  // Covers: "PARAM : VALUE UNIT"
+  const re2 = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\/\.]*?)[\s.:]+([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^·]+)?$/;
+  m = t.match(re2);
+  if (m) {
+    const name = m[1].trim();
+    if (name.length < 2 || name.length > 50) return null;
+    if (/^\d/.test(name)) return null;
+    const val = pNum(m[2]);
+    if (val===null) return null;
+    const unit = (m[3]||'').trim();
+    return {name:normName(name),value:val,valueStr:m[2],unit,refMin:null,refMax:null};
+  }
+
+  return null;
+}
+
+function parsePDFText(text, format) {
+  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
+  const results = [];
+  const date = findDate(text, format);
+
+  // Identify single-exam blocks bounded by "Resultado:" lines
+  // And also multi-param sections
+
+  let inMulti = false;
+  let currentExamName = '';
+  let lookingForRef = false;
+  let pendingResult = null;
+  let inCulture = false;
+  let currentCultureType = '';
+  let inAntibiograma = false;
+  let inEAS = false;
+  let easPendingParams = [];   // param names collected before "Resultado"
+  let easPendingValues = [];   // values collected after "Resultado"
+  let easPhase = '';           // 'params' | 'values' | 'refs'
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Skip Antibiograma section (sensitivity tables)
+    if (/^antibiograma$/i.test(line.trim())) { inAntibiograma = true; inCulture = false; continue; }
+    if (inAntibiograma) {
+      const ct = getCultureType(line);
+      if (ct || isMultiHeader(line)) { inAntibiograma = false; /* fall through */ }
+      else { continue; }
+    }
+
+    // Culture exam detection — must come before isExamHeader to avoid culture names being treated as regular exams
+    const cultureType = getCultureType(line);
+    if (cultureType) {
+      inMulti = false; inCulture = true; currentCultureType = cultureType;
+      currentExamName = ''; pendingResult = null;
+      continue;
+    }
+
+    // EAS (urine analysis) detection
+    if (isEASHeader(line)) {
+      // Flush any pending EAS pairs from previous section
+      if (inEAS) flushEASPairs(easPendingParams, easPendingValues, date, results);
+      inMulti = false; inCulture = false; inEAS = true;
+      easPendingParams = []; easPendingValues = []; easPhase = 'params';
+      currentExamName = ''; pendingResult = null;
+      continue;
+    }
+
+    // If inside EAS section
+    if (inEAS) {
+      const t = line.trim();
+      // Sub-section headers — flush current pairs, start new section
+      if (/^(EXAME FÍSICO|EXAME QUÍMICO|EXAME MICROSCÓPICO|ELEMENTOS ANORMAIS|SEDIMENTOSCOPIA|ÁNALISE FÍSICO|ANÁLISE FÍSICO|ANALITO|CARACTERES FÍSICOS)/i.test(t)) {
+        if (easPhase === 'values') {
+          flushEASPairs(easPendingParams, easPendingValues, date, results);
+          easPendingParams = []; easPendingValues = []; easPhase = 'params';
+        }
+        continue;
+      }
+      // Skip metadata, separators, colon-only lines (HOC column separators)
+      if (skipLine(t) || /^:+\s*$/.test(t) || /^[-=_]{3,}/.test(t)) continue;
+      if (/^(Material:|Método|Coleta\.\.|Liberação:|ASSINATURA|Responsável|Nota:|Obs:)/i.test(t)) continue;
+      // "Resultado" header → switch to collecting values
+      if (/^resultado[s]?$/i.test(t)) { easPhase = 'values'; continue; }
+      // "Referência" header → stop collecting values, flush
+      if (/^(referência[s]?|valor de referência|referencia[s]?|v\.r\.|vr:)/i.test(t)) {
+        if (easPhase === 'values') {
+          flushEASPairs(easPendingParams, easPendingValues, date, results);
+          easPendingParams = []; easPendingValues = []; easPhase = 'refs';
+        } else { easPhase = 'refs'; }
+        continue;
+      }
+      // Exit EAS on section separator or new exam type
+      if (isMultiHeader(t) || getCultureType(t)) {
+        flushEASPairs(easPendingParams, easPendingValues, date, results);
+        inEAS = false; /* fall through */
+      } else {
+        if (easPhase === 'refs') { continue; } // skip reference column values
+        // Try single-line parsing first (works when PDF.js groups row correctly)
+        const singleR = parseEASLine(t, date);
+        if (singleR) { results.push(singleR); continue; }
+        // Sequential collection fallback
+        if (easPhase === 'params') {
+          const cn = normEASName(t);
+          if (cn) { easPendingParams.push(cn); }
+        } else if (easPhase === 'values') {
+          // Skip lines that look like reference ranges
+          if (/\s+[aA]\s+|ATÉ\s+[0-9]/.test(t)) continue;
+          if (t && !skipLine(t)) easPendingValues.push(t);
+        }
+        continue;
+      }
+    }
+
+    // If scanning for culture result
+    if (inCulture) {
+      if (isMultiHeader(line)) {
+        inCulture = false; /* fall through to multi-header handler */
+      } else {
+        // Negative result
+        if (/não\s*houve\s+crescimento|^negativo$|sem\s+crescimento|ausência\s+de\s+crescimento|no\s+growth/i.test(line.trim())) {
+          results.push({name:currentCultureType, value:0, valueStr:'Negativo', unit:'', refMin:null, refMax:null, date, status:'normal', isCulture:true});
+          inCulture = false;
+        } else {
+          // Positive: organism name after keyword
+          const orgM = line.match(/(?:[Bb]act[eé]ria\s+isolada|[Ff]ungo\s+isolado|[Aa]gente\s+isolado|[Mm]icrorganismo\s+isolado|[Cc]rescimento\s+de|[Ii]solado)\s*[.:]+\s*(.+)/);
+          if (orgM) {
+            const organism = orgM[1].trim().replace(/\.+$/, '');
+            if (organism && organism.length > 2) {
+              results.push({name:currentCultureType, value:1, valueStr:organism, unit:'', refMin:null, refMax:null, date, status:'high', isCulture:true});
+            }
+            inCulture = false;
+          }
+        }
+        continue; // keep scanning in culture mode
+      }
+    }
+
+    // Detect multi-param section header
+    if (isMultiHeader(line)) {
+      inMulti = true;
+      currentExamName = '';
+      pendingResult = null;
+      continue;
+    }
+
+    // SINGLE EXAM: detect exam name line (all-caps, no numbers, not a section)
+    // Then look for "Resultado:" in next few lines
+    // Allow "-" in name (e.g. "TGO -TRANSAMINASE OXALACETICA", "TGP - TRANSAMINASE PIRUVICA")
+    const isExamHeader = /^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ\s\(\)\/\-]*$/.test(line) &&
+                         line.length > 3 && line.length < 60 &&
+                         !isMultiHeader(line) &&
+                         !/^(VALORES|VALOR|SÉRIE|ERITROGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQUÍMICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULAÇÃO)/i.test(line);
+
+    if (isExamHeader) {
+      inMulti = false;  // Exit multi-param mode when a new single exam header is detected
+      currentExamName = line.trim();
+      pendingResult = null;
+      continue;
+    }
+
+    // Match "Resultado: VALUE UNIT"
+    const resMatch = line.match(/[Rr]esultado[s]?\s*[.:>]?\s*:?\s*([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^·0-9]+)?/);
+    if (resMatch && !inMulti) {
+      const val = pNum(resMatch[1]);
+      const unit = (resMatch[2]||'').trim();
+      if (val !== null && currentExamName) {
+        // Look ahead for reference — up to 12 lines, handles multi-line ref tables
+        let ref = '';
+        let passedRefHeader = false;
+        // First check: reference may appear inline on the same result line
+        // e.g. "Resultado: 22   U/L       Referência.........: 5 - 34 U/L"
+        const inlineRefSameLine = line.match(/[Rr]eferên[^:]*:?\s*(.+)/);
+        if (inlineRefSameLine) {
+          const cand = inlineRefSameLine[1].trim();
+          const {refMin:mn, refMax:mx} = parseRef(cand);
+          if (mn !== null || mx !== null) { ref = cand; }
+        }
+        for (let j=i+1; j<Math.min(i+12, lines.length); j++) {
+          const lj = lines[j];
+          // Stop scanning on next exam header or metadata
+          if (/^(Obs|Nota:|Obs:|Data\s+Pedido|Paciente\s*:)/i.test(lj.trim())) break;
+          // Check for explicit Referência header line
+          const refM = lj.match(/(?:[Vv]alor[es\s]+de\s+[Rr]ef[^:]*:?|VALOR\s+DE\s+REF[^:]*:?|[Rr]eferên[^:]*:?)\s*(.*)/);
+          if (refM) {
+            passedRefHeader = true;
+            const candidate = refM[1].trim();
+            const {refMin:mn, refMax:mx} = parseRef(candidate);
+            if (mn !== null || mx !== null) { ref = candidate; break; }
+            continue; // ref header found but no range on same line, keep scanning
+          }
+          // After Referência header, look for first valid numeric range in subsequent lines
+          // (handles "Adultos......: 15 - 39 mg/dL", "Homem......: 0,70 - 1,40 mg/dL", etc.)
+          if (passedRefHeader) {
+            const rngM = lj.match(/([0-9][0-9.,]*)\s*[-–]\s*([0-9][0-9.,]*)/);
+            if (rngM) { ref = `${rngM[1]} - ${rngM[2]}`; break; }
+            const rngA = lj.match(/([0-9][0-9.,]*)\s+[aA]\s+([0-9][0-9.,]*)/);
+            if (rngA) { ref = `${rngA[1]} a ${rngA[2]}`; break; }
+            const ltM = lj.match(/(?:[Aa]té|<)\s*([0-9][0-9.,]*)/);
+            if (ltM) { ref = `< ${ltM[1]}`; break; }
+          }
+          // Inline ref on result line itself
+          const inM = line.match(/(?:[0-9][0-9.,]*\s*[a-zA-Z\/µ%~³]+\s+)([0-9][0-9.,]*\s*[-–aA]\s*[0-9][0-9.,]*)/);
+          if (inM) { ref = inM[1]; break; }
+        }
+        // Final fallback: inline ref embedded in result line
+        if (!ref) {
+          const inM2 = line.match(/[0-9][0-9.,]*\s*[a-zA-Z\/µ%~³]+\s+([0-9][0-9.,]*\s*(?:[-–]|[aA])\s*[0-9][0-9.,]*)/);
+          if (inM2) ref = inM2[1];
+        }
+        const {refMin,refMax} = parseRef(ref);
+        const name = normName(currentExamName);
+        if (!SKIP_NAMES.has(name.toUpperCase())) {
+          results.push({name,value:val,valueStr:resMatch[1],unit,refMin,refMax,date,status:getStatus(val,refMin,refMax)});
+        }
+        pendingResult = null;
+      }
+      continue;
+    }
+
+    // CITOMED format: single line "EXAM_NAME : VALUE UNIT" with ref on next line
+    if (format === 'CITOMED' || format === 'GENERIC') {
+      const cm = line.match(/^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç\s\(\)\/]+?)\s*:\s*([−\-]?[0-9][0-9.,]*)\s+([a-zA-Zµ%\/~³^·]+)?$/);
+      if (cm && cm[1].length>2 && cm[1].length<50 && !skipLine(line)) {
+        const name = normName(cm[1]);
+        const val = pNum(cm[2]);
+        const unit = (cm[3]||'').trim();
+        if (val!==null && !SKIP_NAMES.has(name.toUpperCase())) {
+          let ref='';
+          for (let j=i+1;j<Math.min(i+4,lines.length);j++) {
+            const rm = lines[j].match(/(?:[Vv]alor\s+de\s+[Rr]ef[^:]*:?|VALOR\s+DE\s+REF[^:]*:?)\s*(.+)/);
+            if (rm){ref=rm[1];break;}
+          }
+          const {refMin,refMax}=parseRef(ref);
+          results.push({name,value:val,valueStr:cm[2],unit,refMin,refMax,date,status:getStatus(val,refMin,refMax)});
+        }
+      }
+    }
+
+    // Multi-param row (hemograma, gasometria, etc.)
+    if (inMulti) {
+      if (skipLine(line)) continue;
+      // Check for end of section: blank or new section
+      if (/^[-=*]+$/.test(line)) { inMulti=false; continue; }
+      const row = parseParamRow(line);
+      if (row) {
+        row.date = date;
+        row.status = getStatus(row.value,row.refMin,row.refMax);
+        if (!SKIP_NAMES.has(row.name.toUpperCase())) results.push(row);
+      }
+    }
+  }
+
+  // Additional pass: find any param rows outside multi sections
+  // (for formats like CITOMED where hemograma rows appear inline)
+  for (let i=0;i<lines.length;i++) {
+    const line = lines[i];
+    if (skipLine(line)) continue;
+    const row = parseParamRow(line);
+    if (row && row.refMin!==null) { // only if has reference (more reliable)
+      row.date = date;
+      row.status = getStatus(row.value,row.refMin,row.refMax);
+      if (!SKIP_NAMES.has(row.name.toUpperCase())) {
+        // Don't duplicate
+        const dup = results.find(r=>r.name===row.name && r.date===row.date && String(r.value)===String(row.value));
+        if (!dup) results.push(row);
+      }
+    }
+  }
+
+  // Flush any remaining EAS sequential pairs
+  if (inEAS && easPendingParams.length > 0 && easPendingValues.length > 0) {
+    flushEASPairs(easPendingParams, easPendingValues, date, results);
+  }
+
+  // Mark whether each result is a known parameter (whitelist check)
+  results.forEach(r => {
+    r.known = r.isCulture || PARAM_WHITELIST.has(r.name);
+  });
+
+  // Deduplicate (keep first occurrence for same name+date)
+  const seen = new Set();
+  return results.filter(r => {
+    const k = `${r.name}|${r.date}|${r.value}`;
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+}
+
+const SKIP_NAMES = new Set([
+  'RESULTADO','REFERÊNCIA','VALOR DE REFERÊNCIA','VALORES DE REFERÊNCIA','VALORES ABSOLUTOS',
+  'MATERIAL','MÉTODO','MÉTODO','COLETADO','LIBERADO','HASH','IMPRESSO',
+  'SÉRIE ERITROCITÁRIA','SÉRIE LEUCOCITÁRIA','SÉRIE PLAQUETÁRIA','ERITROGRAMA','LEUCOGRAMA',
+  'PLAQUETOGRAMA','BIOQUÍMICA','CITOMETRIA','CITOLOGIA','VDRL','BACTERIOSCOPIA GRAM',
+  'BACTERIOSCOPIA ZIEHL','PESQUISA DE FUNGOS','ASPECTO','COR','IDENTIFICAÇÃO',
+  'EXAME FÍSICO','EXAME QUÍMICO','EXAME MICROSCÓPICO',
+]);
+
+// ======================================================================
+// CULTURE TYPES
+// ======================================================================
+const CULTURE_TYPES = {
+  'HEMOCULTURA':'Hemocultura',
+  'UROCULTURA':'Urocultura','URINOCULTURA':'Urocultura','CULTURA DE URINA':'Urocultura',
+  'ASPIRADO TRAQUEAL':'Aspirado Traqueal','SECREÇÃO TRAQUEAL':'Secreção Traqueal',
+  'LAVADO BRONCOALVEOLAR':'Lavado Broncoalveolar','LBA':'Lavado Broncoalveolar',
+  'ESCARRO':'Escarro',
+  'LÍQUOR':'Líquor','LIQUOR':'Líquor','CULTURA DE LÍQUOR':'Líquor',
+  'LÍQUIDO':'Líquido','LIQUIDO PLEURAL':'Líquido Pleural','LÍQUIDO PLEURAL':'Líquido Pleural',
+  'LÍQUIDO ASCÍTICO':'Líquido Ascítico','LIQUIDO ASCITICO':'Líquido Ascítico',
+  'LÍQUIDO SINOVIAL':'Líquido Sinovial',
+  'SECREÇÃO':'Secreção','SECRECAO':'Secreção',
+  'FRAGMENTO':'Fragmento',
+  'SWAB':'Swab','SWAB RETAL':'Swab Retal','SWAB NASAL':'Swab Nasal',
+  'PONTA DE CATETER':'Ponta de Cateter','CATETER':'Ponta de Cateter',
+  'CULTURA DE FEZES':'Cultura de Fezes','COPROCULTURA':'Coprocultura',
+};
+
+// Add culture canonical names to whitelist
+Object.values(CULTURE_TYPES).forEach(v => PARAM_WHITELIST.add(v));
+
+// ======================================================================
+// EAS (URINE ANALYSIS) CONSTANTS AND HELPERS
+// ======================================================================
+const EAS_NAME_MAP = {
+  // Físico
+  'COR':'Cor (U)','ASPECTO':'Aspecto (U)','DEPÓSITO':'Depósito','DEPOSITO':'Depósito',
+  'TURBIDEZ':'Aspecto (U)',
+  // Químico
+  'DENSIDADE':'Densidade',
+  'PH':'pH (U)','PH URINARIO':'pH (U)','PH URINÁRIO':'pH (U)',
+  'PROTEÍNA':'Proteínas (U)','PROTEINAS':'Proteínas (U)','PROTEÍNAS':'Proteínas (U)',
+  'PROTEÍNA (ALBUMINA)':'Proteínas (U)','PROTEINA (ALBUMINA)':'Proteínas (U)',
+  'GLICOSE':'Glicose (U)','GLUCOSE':'Glicose (U)',
+  'CETONA':'Cetonas','CETONAS':'Cetonas',
+  'CORPOS CETÔNICOS':'Cetonas','CORPOS CETONICOS':'Cetonas',
+  'BILIRRUBINA':'Bilirrubina (U)','BILIRRUBINAS':'Bilirrubina (U)','BILIRRUIBINA':'Bilirrubina (U)',
+  'NITRITO':'Nitrito',
+  'UROBILINOGÊNIO':'Urobilinogênio','UROBILINOGENIO':'Urobilinogênio',
+  'HEMOGLOBINA':'Hemoglobina (U)','SANGUE':'Hemoglobina (U)',
+  'ESTERASE LEUCOCITÁRIA':'Est. Leucocitária','ESTERASE LEUCOCITARIA':'Est. Leucocitária',
+  // Sedimentoscopia
+  'LEUCOCITOS':'Leucócitos (U)','LEUCÓCITOS':'Leucócitos (U)',
+  'PIÓCITOS':'Leucócitos (U)','PIOCITOS':'Leucócitos (U)',
+  'HEMÁCIAS':'Hemácias (U)','HEMACIAS':'Hemácias (U)',
+  'CELULAS EPITELIAIS':'Cél. Epiteliais','CÉLULAS EPITELIAIS':'Cél. Epiteliais',
+  'ESCAMOSAS':'Cél. Escamosas','CÉLULAS ESCAMOSAS':'Cél. Escamosas',
+  'NÃO ESCAMOSAS':'Cél. Não Escamosas','NAO ESCAMOSAS':'Cél. Não Escamosas',
+  'CÉLULAS TRANSICIONAIS':'Cél. Transicionais','CELULAS TRANSICIONAIS':'Cél. Transicionais',
+  'TRANSICIONAIS':'Cél. Transicionais',
+  'CÉLULAS TUBULARES RENAIS':'Cél. Tubulares','CELULAS TUBULARES RENAIS':'Cél. Tubulares',
+  'CILINDROS':'Cilindros',
+  'CILINDROS HIALINOS':'Cilindros Hialinos',
+  'CILINDROS PATOLÓGICOS':'Cilindros Patol.','CILINDROS PATOLOGICOS':'Cilindros Patol.',
+  'FLORA BACTERIANA':'Flora Bacteriana',
+  'BACTÉRIAS':'Flora Bacteriana','BACTERIAS':'Flora Bacteriana',
+  'LEVEDURAS':'Leveduras','CRISTAIS':'Cristais',
+  'MUCO':'Filamentos de Muco','FILAMENTOS DE MUCO':'Filamentos de Muco',
+  'ESPERMATOZOIDES':'Espermatozoides','ESPERMATOZÓIDES':'Espermatozoides',
+};
+// Add EAS canonical names to whitelist
+Object.values(EAS_NAME_MAP).forEach(v => PARAM_WHITELIST.add(v));
+
+// Qualitative result → display status
+const EAS_QUAL_MAP = {
+  'NEGATIVO':'normal','NEGATIVA':'normal','NEGATIVOS':'normal','NEGATIVAS':'normal',
+  'AUSENTE':'normal','AUSENTES':'normal','AUSÊNCIA':'normal','AUSENCIA':'normal',
+  'NORMAL':'normal','LÍMPIDO':'normal','LIMPIDO':'normal',
+  'AMARELO CITRINO':'normal','AMARELO':'normal','INCOLOR':'normal',
+  'NÃO HOUVE CRESCIMENTO':'normal',
+  'ESCASSA':'low','ESCASSO':'low','TRAÇO':'low',
+  'POSITIVO':'low','POSITIVA':'low','PRESENTE':'low','PRESENTES':'low',
+  'LIGEIRAMENTE TURVO':'low','TURVO':'low','CONCENTRADO':'low',
+  'MODERADO':'high','MODERADA':'high',
+  'INTENSO':'high','INTENSA':'high','ABUNDANTE':'high',
+  'HEMÁTICO':'high','HEMATICO':'high','PURULENTO':'high',
+};
+
+function isEASHeader(line) {
+  const t = line.trim().toUpperCase().replace(/[-–\s]+/g,' ');
+  return /^(EAS|EAS ROTINA DE URINA|ROTINA DE URINA|URINA PARCIAL|URINÁLISE|URINALISE|URINA TIPO I|EXAME DE URINA|EAS URINA)/.test(t);
+}
+
+function normEASName(raw) {
+  const u = raw.trim().toUpperCase().replace(/\s+/g,' ').replace(/[.:]+$/, '').trim();
+  return EAS_NAME_MAP[u] || null;
+}
+
+function buildEASResult(name, rawVal, date) {
+  if (!rawVal) return null;
+  const t = rawVal.trim();
+  if (!t || t.length < 1) return null;
+  const upper = t.toUpperCase().replace(/\s+/g,' ');
+  // Check qualitative map (exact then prefix)
+  for (const [key, st] of Object.entries(EAS_QUAL_MAP)) {
+    if (upper === key || upper.startsWith(key+' ') || upper.startsWith(key+'/')) {
+      return {name, value:0, valueStr:t, unit:'', refMin:null, refMax:null, date, status:st, isQualitative:true, known:true};
+    }
+  }
+  // Numeric (including < N patterns → store as qualitative display)
+  const numM = t.match(/^([<>≤≥]?\s*[0-9][0-9.,]*)\s*([a-zA-Zµ/^³·μ]+)?/);
+  if (numM) {
+    const val = pNum(numM[1].replace(/[<>≤≥\s]/g,''));
+    const unit = (numM[2]||'').trim();
+    if (val !== null) {
+      return {name, value:val, valueStr:numM[1].trim(), unit, refMin:null, refMax:null, date, status:'unknown', isQualitative:false, known:true};
+    }
+  }
+  // Any other text (colors, descriptors)
+  if (/^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç\s\-\/]+$/.test(t) && t.length > 1) {
+    const hasAbnormal = /TURVO|CONCENTRADO|HEMÁTICO|PURULENTO/i.test(t);
+    return {name, value:0, valueStr:t, unit:'', refMin:null, refMax:null, date,
+            status: hasAbnormal ? 'high' : 'normal', isQualitative:true, known:true};
+  }
+  return null;
+}
+
+function parseEASLine(line, date) {
+  const t = line.trim();
+  if (!t || t.length < 3) return null;
+  // Colon-separated: "Name: value [ref]" — take first chunk before 3+ spaces
+  const mColon = t.match(/^([^:]{2,50}?)\s*:\s+(.+)$/);
+  if (mColon) {
+    const cn = normEASName(mColon[1]);
+    if (cn) {
+      const rawVal = mColon[2].trim().split(/\s{3,}/)[0].trim();
+      return buildEASResult(cn, rawVal, date);
+    }
+  }
+  // Space-tabular: "PARAM   value   [ref]"
+  const mSpace = t.match(/^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\/]+?)\s{3,}(.+?)(?:\s{2,}(.+))?$/);
+  if (mSpace) {
+    const cn = normEASName(mSpace[1]);
+    if (cn) return buildEASResult(cn, mSpace[2].trim(), date);
+  }
+  return null;
+}
+
+function flushEASPairs(params, values, date, results) {
+  const n = Math.min(params.length, values.length);
+  for (let i = 0; i < n; i++) {
+    const r = buildEASResult(params[i], values[i], date);
+    if (r) results.push(r);
+  }
+}
+
+function getCultureType(line) {
+  const t = line.trim().toUpperCase().replace(/[*.\-]+$/, '').trim();
+  if (CULTURE_TYPES[t]) return CULTURE_TYPES[t];
+  for (const [k, v] of Object.entries(CULTURE_TYPES)) {
+    if (t === k || t.startsWith(k + ' ') || t.startsWith(k + ':')) return v;
+  }
+  return null;
+}
+
+// ======================================================================
+// UPLOAD FLOW
+// ======================================================================
+let uploadMode = 'lab'; // 'lab' | 'img'
+let extractedResults = []; // array of {name,value,valueStr,unit,refMin,refMax,date,included}
+let currentFile = null;
+
+function openUpload(mode) {
+  uploadMode = mode;
+  currentFile = null;
+  extractedResults = [];
+  document.getElementById('modal-upload-title').textContent = mode==='lab' ? 'Adicionar Resultado de Exame' : 'Adicionar Exame de Imagem';
+  showUploadStep(1);
+  document.getElementById('btn-save-lab').style.display = 'none';
+  document.getElementById('btn-save-img').style.display = 'none';
+  document.getElementById('pdf-input').value = '';
+  openModal('modal-upload');
+}
+
+function showUploadStep(n) {
+  ['step-1','step-2','step-3','step-3b','step-err'].forEach(id=>{
+    document.getElementById(id).style.display = 'none';
+  });
+  document.getElementById('step-'+n).style.display='';
+}
+
+function onDragOver(e) { e.preventDefault(); document.getElementById('dropzone').classList.add('dragover'); }
+function onDragLeave(e) { document.getElementById('dropzone').classList.remove('dragover'); }
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropzone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type==='application/pdf') processFile(file);
+  else toast('Arquivo inválido. Envie um PDF.','err');
+}
+function onFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+
+async function processFile(file) {
+  currentFile = file;
+  if (uploadMode === 'img') {
+    document.getElementById('img-fname').textContent = file.name;
+    document.getElementById('img-date').value = new Date().toISOString().slice(0,10);
+    showUploadStep('3b');
+    document.getElementById('btn-save-img').style.display = '';
+    return;
+  }
+  // Lab: extract and parse
+  showUploadStep(2);
+  try {
+    document.getElementById('proc-status').textContent = 'Lendo PDF...';
+    const text = await extractPDFText(file);
+    document.getElementById('proc-status').textContent = 'Analisando resultados...';
+    const format = detectFormat(text);
+    const results = parsePDFText(text, format);
+    const date = findDate(text, format);
+    if (results.length === 0) {
+      document.getElementById('err-msg').textContent = 'Não foi possível identificar resultados neste PDF. Adicione os parâmetros manualmente.';
+      showUploadStep('err');
+      // still allow manual
+      extractedResults = [];
+      document.getElementById('btn-save-lab').style.display = 'none';
+      return;
+    }
+    extractedResults = results.map(r=>({...r,included:r.known!==false}));
+    renderExtracted(format, date);
+    showUploadStep(3);
+    document.getElementById('btn-save-lab').style.display = '';
+  } catch(e) {
+    document.getElementById('err-msg').textContent = e.message || 'Erro ao processar o PDF.';
+    showUploadStep('err');
+  }
+}
+
+function showManualMode() {
+  extractedResults = [];
+  document.getElementById('ext-list').innerHTML = '';
+  document.getElementById('ext-date').textContent = '';
+  document.getElementById('ext-lab').textContent = 'Manual';
+  document.getElementById('ext-date-edit').value = new Date().toISOString().slice(0,10);
+  showUploadStep(3);
+  document.getElementById('btn-save-lab').style.display = '';
+}
+
+// ── Custom whitelist actions ──────────────────────────────────────────
+function addAsNew(i) {
+  const r = extractedResults[i];
+  const name = r.name.trim();
+  const cn = loadCustomNames();
+  if (!cn.newParams.includes(name)) { cn.newParams.push(name); saveCustomNames(cn); }
+  PARAM_WHITELIST.add(name);
+  r.known = true; r.included = true;
+  _markKnown(i, name);
+  toast(`"${name}" adicionado à whitelist ✓`, 'ok');
+}
+
+function showSynonymPicker(i) {
+  const el = document.getElementById('ext-item-'+i);
+  const existing = el.querySelector('.synonym-picker');
+  if (existing) { existing.remove(); return; }
+  const opts = [...PARAM_WHITELIST].sort().map(p=>`<option value="${escHtml(p)}">`).join('');
+  const pick = document.createElement('div');
+  pick.className = 'synonym-picker';
+  pick.innerHTML = `<datalist id="wl-dl-${i}">${opts}</datalist>
+    <input id="syn-inp-${i}" type="text" list="wl-dl-${i}" placeholder="Digite o parâmetro existente…" autocomplete="off">
+    <button class="sp-confirm" onclick="confirmSynonym(${i})">✓</button>
+    <button class="sp-cancel" onclick="document.getElementById('ext-item-${i}').querySelector('.synonym-picker').remove()">✕</button>`;
+  el.querySelector('.ext-name').appendChild(pick);
+  setTimeout(()=>document.getElementById('syn-inp-'+i)?.focus(), 50);
+}
+
+function confirmSynonym(i) {
+  const r = extractedResults[i];
+  const inp = document.getElementById('syn-inp-'+i);
+  const canonical = inp?.value.trim();
+  if (!canonical) { toast('Digite o nome do parâmetro','err'); return; }
+  if (!PARAM_WHITELIST.has(canonical)) {
+    // Allow creating a new canonical too
+    if (!confirm(`"${canonical}" não está na lista. Deseja criar como novo parâmetro?`)) return;
+    const cn2 = loadCustomNames();
+    if (!cn2.newParams.includes(canonical)) { cn2.newParams.push(canonical); }
+    cn2.synonyms[r.name.trim().toUpperCase().replace(/\s+/g,' ')] = canonical;
+    saveCustomNames(cn2);
+    NAME_MAP[r.name.trim().toUpperCase().replace(/\s+/g,' ')] = canonical;
+    PARAM_WHITELIST.add(canonical);
+  } else {
+    const cn2 = loadCustomNames();
+    cn2.synonyms[r.name.trim().toUpperCase().replace(/\s+/g,' ')] = canonical;
+    saveCustomNames(cn2);
+    NAME_MAP[r.name.trim().toUpperCase().replace(/\s+/g,' ')] = canonical;
+    PARAM_WHITELIST.add(canonical);
+  }
+  r.name = canonical; r.known = true; r.included = true;
+  _markKnown(i, canonical);
+  toast(`Mapeado para "${canonical}" ✓`, 'ok');
+}
+
+function _markKnown(i, newName) {
+  const el = document.getElementById('ext-item-'+i);
+  if (!el) return;
+  el.classList.remove('unknown','excluded');
+  const nameDiv = el.querySelector('.ext-name');
+  nameDiv.innerHTML = escHtml(newName);
+  el.querySelector('.toggle-btn').classList.add('on');
+  _updateUnknownBanner();
+}
+
+function _updateUnknownBanner() {
+  const count = extractedResults.filter(r=>r.known===false).length;
+  const b = document.querySelector('.unknown-banner');
+  if (!b) return;
+  if (count === 0) b.remove();
+  else b.innerHTML = `⚠️ <strong>${count} parâmetro${count>1?'s':''} não reconhecido${count>1?'s':''}</strong> — marcado${count>1?'s':''} em amarelo e desmarcado${count>1?'s':''} por padrão. Revise antes de incluir.`;
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+const LAB_LABELS = {HUGO:'HUGO / Albert Einstein',CITOMED:'Citomed (HOC)',BIOCENTRO:'Biocentro (IMEC)',PIOX:'São Pio X',GENERIC:'Laboratório genérico'};
+
+function renderExtracted(format, date) {
+  document.getElementById('ext-date').textContent = date;
+  document.getElementById('ext-lab').textContent = LAB_LABELS[format]||format;
+  // Preset date edit
+  const iso = dateToISO(date);
+  document.getElementById('ext-date-edit').value = iso||new Date().toISOString().slice(0,10);
+
+  const list = document.getElementById('ext-list');
+  const unknownCount = extractedResults.filter(r=>r.known===false).length;
+  // Show summary banner if there are unknown params
+  let banner = '';
+  if (unknownCount > 0) {
+    banner = `<div class="unknown-banner" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#92400e">
+      ⚠️ <strong>${unknownCount} parâmetro${unknownCount>1?'s':''} não reconhecido${unknownCount>1?'s':''}</strong> — marcado${unknownCount>1?'s':''} em amarelo e desmarcado${unknownCount>1?'s':''} por padrão. Revise antes de incluir.
+    </div>`;
+  }
+  list.innerHTML = banner + extractedResults.map((r,i)=>`
+    <div class="ext-item${r.known===false?' unknown':''}${!r.included?' excluded':''}" id="ext-item-${i}">
+      <div class="ext-name">${escHtml(r.name)}${r.known===false?`<span class="unknown-badge">novo</span><div class="unknown-actions"><button onclick="addAsNew(${i})">＋ Salvar como novo</button><button onclick="showSynonymPicker(${i})">🔗 É variação de…</button></div>`:''}
+      </div>
+      <div class="ext-val"><input type="text" value="${r.valueStr||r.value}" onchange="updateExt(${i},'value',this.value)"></div>
+      <div class="ext-unit"><input type="text" value="${r.unit||''}" onchange="updateExt(${i},'unit',this.value)"></div>
+      <div class="ext-ref"><input type="text" value="${r.refMin!=null?formatRef(r.refMin,r.refMax):''}" onchange="updateExt(${i},'ref',this.value)" placeholder="min - max"></div>
+      <button class="toggle-btn ${r.included?'on':''}" onclick="toggleExt(${i})" title="${r.included?'Excluir':'Incluir'}">✓</button>
+    </div>`).join('');
+}
+
+function formatRef(mn,mx) {
+  if (mn===null&&mx===null) return '';
+  if (mn===null) return `< ${mx}`;
+  if (mx===null) return `> ${mn}`;
+  return `${mn} - ${mx}`;
+}
+
+function updateExt(i,field,val) {
+  if (field==='value') { extractedResults[i].valueStr=val; extractedResults[i].value=pNum(val)||val; }
+  else if (field==='unit') extractedResults[i].unit=val;
+  else if (field==='ref') {
+    const {refMin,refMax}=parseRef(val);
+    extractedResults[i].refMin=refMin; extractedResults[i].refMax=refMax;
+  }
+}
+
+function toggleExt(i) {
+  extractedResults[i].included = !extractedResults[i].included;
+  const el = document.getElementById('ext-item-'+i);
+  el.classList.toggle('excluded', !extractedResults[i].included);
+  el.querySelector('.toggle-btn').classList.toggle('on', extractedResults[i].included);
+}
+
+function addManual() {
+  const name = document.getElementById('man-name').value.trim();
+  const val = document.getElementById('man-val').value.trim();
+  const unit = document.getElementById('man-unit').value.trim();
+  const ref = document.getElementById('man-ref').value.trim();
+  if (!name || !val) { toast('Nome e valor são obrigatórios','err'); return; }
+  const vNum = pNum(val);
+  const {refMin,refMax}=parseRef(ref);
+  const newR = {name:normName(name),value:vNum??val,valueStr:val,unit,refMin,refMax,date:'',included:true,status:getStatus(vNum,refMin,refMax)};
+  extractedResults.push(newR);
+  // Add to DOM
+  const list = document.getElementById('ext-list');
+  const i = extractedResults.length-1;
+  const div = document.createElement('div');
+  div.className='ext-item'; div.id=`ext-item-${i}`;
+  div.innerHTML=`
+    <div class="ext-name">${newR.name}</div>
+    <div class="ext-val"><input type="text" value="${val}" onchange="updateExt(${i},'value',this.value)"></div>
+    <div class="ext-unit"><input type="text" value="${unit}" onchange="updateExt(${i},'unit',this.value)"></div>
+    <div class="ext-ref"><input type="text" value="${ref}" onchange="updateExt(${i},'ref',this.value)" placeholder="min - max"></div>
+    <button class="toggle-btn on" onclick="toggleExt(${i})" title="Excluir">✓</button>`;
+  list.appendChild(div);
+  // Clear
+  document.getElementById('man-name').value='';
+  document.getElementById('man-val').value='';
+  document.getElementById('man-unit').value='';
+  document.getElementById('man-ref').value='';
+  document.getElementById('btn-save-lab').style.display='';
+}
+
+function dateToISO(dmy) {
+  if (!dmy) return '';
+  const m = dmy.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+}
+function isoToDisplay(iso) {
+  if (!iso) return '';
+  const m = iso.match(/(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+}
+
+function saveLab() {
+  const toSave = extractedResults.filter(r=>r.included);
+  if (toSave.length===0) { toast('Nenhum parâmetro selecionado','err'); return; }
+  const isoDate = document.getElementById('ext-date-edit')?.value || '';
+  const displayDate = isoDate ? isoToDisplay(isoDate) : (toSave[0].date || new Date().toLocaleDateString('pt-BR'));
+  const p = getPatient(state.unitId, state.patientId);
+  if (!p) return;
+  if (!p.labExams) p.labExams={};
+  let added=0, updated=0;
+  toSave.forEach(r => {
+    const name = r.name;
+    if (!p.labExams[name]) p.labExams[name]=[];
+    // Overwrite if same date, otherwise add
+    const idx = p.labExams[name].findIndex(x=>x.date===displayDate);
+    const numVal = typeof r.value==='number' ? r.value : pNum(String(r.value));
+    const isSpecial = r.isCulture || r.isQualitative;
+    const entry = {date:displayDate,value:numVal,valueStr:r.valueStr||String(r.value),unit:r.unit||'',refMin:r.refMin,refMax:r.refMax,
+      status:isSpecial ? r.status : getStatus(numVal,r.refMin,r.refMax),
+      ...(r.isCulture?{isCulture:true}:{}),
+      ...(r.isQualitative?{isQualitative:true}:{})};
+    if (idx>=0) { p.labExams[name][idx]=entry; updated++; } else { p.labExams[name].push(entry); added++; }
+  });
+  saveDB(); closeModal('modal-upload'); renderLabPanel();
+  toast(`${added} parâmetro${added!==1?'s':''} adicionado${added!==1?'s':''}${updated?`, ${updated} atualizado${updated!==1?'s':''}`:''}. ✓`,'ok');
+}
+
+function toggleImgCustom() {
+  const v = document.getElementById('img-type-sel').value;
+  document.getElementById('img-custom-grp').style.display = v==='Outro'?'':'none';
+}
+
+function saveImg() {
+  let type = document.getElementById('img-type-sel').value;
+  if (type==='Outro') type = document.getElementById('img-type-custom').value.trim() || 'Exame de imagem';
+  if (!type) { toast('Selecione o tipo de exame','err'); return; }
+  const isoDate = document.getElementById('img-date').value;
+  const displayDate = isoDate ? isoToDisplay(isoDate) : new Date().toLocaleDateString('pt-BR');
+  const p = getPatient(state.unitId, state.patientId);
+  if (!p) return;
+  if (!p.imagingExams) p.imagingExams=[];
+  p.imagingExams.push({ id:uid(), type, date:displayDate, filename:currentFile?.name||'', addedAt:new Date().toISOString() });
+  saveDB(); closeModal('modal-upload'); renderImgPanel();
+  toast('Exame de imagem registrado ✓','ok');
+}
+
+// ======================================================================
+// MODALS
+// ======================================================================
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Close on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target===el) closeModal(el.id); });
+});
+
+// ======================================================================
+// CONFIRM DIALOG
+// ======================================================================
+function confirm2(msg, cb) {
+  document.getElementById('conf-msg').textContent = msg;
+  document.getElementById('conf-ok').onclick = () => { closeModal('modal-confirm'); cb(); };
+  openModal('modal-confirm');
+}
+
+// ======================================================================
+// EXPORT / IMPORT
+// ======================================================================
+function exportData() {
+  const json = JSON.stringify(db, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`clinboard_${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('Dados exportados ✓','ok');
+}
+
+function importData(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!imported.units) throw new Error('Formato inválido');
+      confirm2('Importar dados? Os dados atuais serão substituídos.', ()=>{
+        db = imported;
+        // fix structure
+        db.units.forEach(u=>{
+          if(!u.patients)u.patients=[];
+          u.patients.forEach(p=>{if(!p.labExams)p.labExams={};if(!p.imagingExams)p.imagingExams=[];if(!p.status)p.status='ativo';});
+        });
+        saveDB(); goHome(); toast('Dados importados ✓','ok');
+      });
+    } catch(err) { toast('Arquivo inválido: '+err.message,'err'); }
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+
+// ======================================================================
+// TOAST
+// ======================================================================
+function toast(msg, type='') {
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className='toast'+(type?' '+type:'');
+  el.innerHTML=(type==='ok'?'✓ ':type==='err'?'✗ ':'ℹ ')+msg;
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.style.transition='opacity .4s'; el.style.opacity='0'; setTimeout(()=>el.remove(),400); },3000);
+}
+
+// ======================================================================
+// KEYBOARD SHORTCUTS
+// ======================================================================
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') {
+    document.querySelectorAll('.modal-overlay.open').forEach(m=>closeModal(m.id));
+  }
+});
+
+// ======================================================================
+// INIT
+// ======================================================================
+loadDB();
+applyCustomNames();
+renderHome();
+renderBreadcrumb();
+
+// Registrar Service Worker para funcionamento offline (PWA)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registrado:', reg.scope))
+      .catch(err => console.warn('SW falhou:', err));
+  });
+}
+</script>
+</body>
+</html>
