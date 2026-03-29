@@ -10,6 +10,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="clinBoard">
 <link rel="apple-touch-icon" href="icon-192.png">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 :root{--primary:#1a3a5c;--primary-dk:#122844;--primary-lt:#dbeeff;--primary-mid:#2563a8;--accent:#3b82c4;--accent-lt:#dbeeff;--danger:#dc2626;--success:#16a34a;--warn:#d97706;--g50:#f7f9fc;--g100:#eef2f7;--g200:#dde6f0;--g300:#c5d4e6;--g400:#94aec8;--g500:#6b8aab;--g600:#4a6d8c;--g700:#2f4f6e;--g800:#1a3a5c;--g900:#0f2236;--hi-bg:#fef2f2;--hi-tx:#b91c1c;--lo-bg:#eff6ff;--lo-tx:#1a3a5c;--r:8px;--sh:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);--shm:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.05);--shl:0 10px 15px rgba(0,0,0,.1),0 4px 6px rgba(0,0,0,.05)}
@@ -194,9 +198,64 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 ::-webkit-scrollbar-thumb:hover{background:var(--g400)}
 @media(max-width:640px){.main{padding:16px}.form-row{grid-template-columns:1fr}.pt-hdr{flex-direction:column}.ext-item{grid-template-columns:1fr 1fr;grid-template-rows:auto auto}.ext-header{display:none}}
 .diag-text{font-size:13px;color:var(--g600);font-style:italic;max-width:400px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Firebase auth / setup overlays */
+.fb-overlay{position:fixed;inset:0;background:rgba(15,34,54,.92);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px}
+.fb-card{background:#fff;border-radius:16px;padding:40px 36px;max-width:440px;width:100%;box-shadow:0 24px 48px rgba(0,0,0,.25);text-align:center}
+.fb-logo{font-size:42px;margin-bottom:12px}
+.fb-title{font-size:22px;font-weight:700;color:var(--g900);margin-bottom:6px}
+.fb-sub{font-size:14px;color:var(--g500);margin-bottom:28px;line-height:1.5}
+.fb-card textarea{width:100%;height:140px;font-family:monospace;font-size:12px;border:1px solid var(--g300);border-radius:8px;padding:10px;resize:vertical;color:var(--g800)}
+.fb-card textarea:focus{outline:none;border-color:var(--accent)}
+.btn-google{background:#fff;color:#3c4043;border:1px solid var(--g300);font-size:15px;font-weight:500;padding:12px 24px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:10px;transition:box-shadow .15s,background .15s}
+.btn-google:hover{background:#f8f9fa;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.btn-google svg{flex-shrink:0}
+.hdr-user{display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,255,255,.85)}
+.hdr-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.3)}
+.hdr-avatar-placeholder{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff}
+.fb-err{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:13px;margin-top:12px;display:none;text-align:left}
 </style>
 </head>
 <body>
+
+<!-- OVERLAY: FIREBASE SETUP -->
+<div class="fb-overlay" id="fb-setup-overlay" style="display:none">
+  <div class="fb-card">
+    <div class="fb-logo">🔧</div>
+    <div class="fb-title">Configurar sincronização</div>
+    <div class="fb-sub">Cole abaixo o objeto de configuração do seu projeto Firebase.<br>Essa configuração é pública e fica salva no seu navegador.</div>
+    <textarea id="fb-cfg-input" placeholder='{
+  "apiKey": "...",
+  "authDomain": "...",
+  "projectId": "...",
+  "storageBucket": "...",
+  "messagingSenderId": "...",
+  "appId": "..."
+}'></textarea>
+    <div class="fb-err" id="fb-setup-err"></div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:20px">
+      <button class="btn btn-outline" onclick="fbSkipSetup()">Usar sem sincronização</button>
+      <button class="btn btn-success" onclick="fbSaveConfig()">Salvar e conectar</button>
+    </div>
+    <p style="font-size:12px;color:var(--g400);margin-top:16px">
+      <a href="https://console.firebase.google.com" target="_blank" style="color:var(--accent)">Como criar um projeto Firebase?</a>
+    </p>
+  </div>
+</div>
+
+<!-- OVERLAY: LOGIN -->
+<div class="fb-overlay" id="fb-login-overlay" style="display:none">
+  <div class="fb-card">
+    <div class="fb-logo">🏥</div>
+    <div class="fb-title">clinBoard</div>
+    <div class="fb-sub">Entre com sua conta Google para sincronizar seus dados entre dispositivos.</div>
+    <button class="btn-google" onclick="fbSignIn()">
+      <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Entrar com Google
+    </button>
+    <div class="fb-err" id="fb-login-err"></div>
+    <p style="font-size:12px;color:var(--g400);margin-top:20px;cursor:pointer" onclick="fbResetConfig()">⚙ Alterar configuração Firebase</p>
+  </div>
+</div>
 
 <!-- HEADER -->
 <header class="app-header">
@@ -229,6 +288,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div class="hdr-actions">
     <button class="btn btn-ghost btn-sm" onclick="exportData()">⬆ Exportar</button>
     <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬇ Importar<input type="file" accept=".json" id="import-file" style="display:none" onchange="importData(event)"></label>
+    <div class="hdr-user" id="hdr-user" style="display:none">
+      <span id="hdr-username" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+      <button class="btn btn-ghost btn-sm" onclick="fbSignOut()" title="Sair">⏻</button>
+    </div>
   </div>
 </header>
 
@@ -452,6 +515,154 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 // ======================================================================
+// ======================================================================
+// FIREBASE — configuração e autenticação
+// ======================================================================
+let _fbApp = null, _fbAuth = null, _fbStore = null, _fbUser = null;
+let _fbSyncTimer = null;
+
+function fbGetConfig() {
+  try { const r = localStorage.getItem('clinboard_firebase_cfg'); return r ? JSON.parse(r) : null; }
+  catch { return null; }
+}
+
+function fbInit(cfg) {
+  try {
+    _fbApp   = firebase.initializeApp(cfg);
+    _fbAuth  = firebase.auth();
+    _fbStore = firebase.firestore();
+    return true;
+  } catch(e) { console.warn('Firebase init error:', e); return false; }
+}
+
+function fbShowSetup()  { document.getElementById('fb-setup-overlay').style.display='flex'; }
+function fbHideSetup()  { document.getElementById('fb-setup-overlay').style.display='none'; }
+function fbShowLogin()  { document.getElementById('fb-login-overlay').style.display='flex'; }
+function fbHideLogin()  { document.getElementById('fb-login-overlay').style.display='none'; }
+
+function fbSkipSetup() {
+  fbHideSetup();
+  // Run app without sync
+  loadDB(); applyCustomNames(); renderHome(); renderBreadcrumb();
+}
+
+function fbSaveConfig() {
+  const raw = document.getElementById('fb-cfg-input').value.trim();
+  const errEl = document.getElementById('fb-setup-err');
+  errEl.style.display='none';
+  let cfg;
+  try { cfg = JSON.parse(raw); } catch {
+    errEl.textContent = 'JSON inválido. Verifique se copiou o objeto completo.';
+    errEl.style.display='block'; return;
+  }
+  if (!cfg.apiKey || !cfg.projectId) {
+    errEl.textContent = 'Configuração incompleta. Certifique-se de incluir apiKey e projectId.';
+    errEl.style.display='block'; return;
+  }
+  localStorage.setItem('clinboard_firebase_cfg', JSON.stringify(cfg));
+  fbHideSetup();
+  if (fbInit(cfg)) fbStartAuth();
+  else { fbShowLogin(); }
+}
+
+function fbResetConfig() {
+  localStorage.removeItem('clinboard_firebase_cfg');
+  fbHideLogin(); fbShowSetup();
+}
+
+function fbStartAuth() {
+  _fbAuth.onAuthStateChanged(user => {
+    if (user) {
+      _fbUser = user;
+      fbHideLogin();
+      // Show user in header
+      const hdrUser = document.getElementById('hdr-user');
+      const hdrName = document.getElementById('hdr-username');
+      if (hdrUser) hdrUser.style.display='flex';
+      if (hdrName) hdrName.textContent = user.displayName || user.email;
+      // Load data from Firestore then render
+      fbLoadFromCloud().then(() => {
+        applyCustomNames(); renderHome(); renderBreadcrumb();
+      });
+    } else {
+      _fbUser = null;
+      const hdrUser = document.getElementById('hdr-user');
+      if (hdrUser) hdrUser.style.display='none';
+      fbShowLogin();
+    }
+  });
+}
+
+function fbSignIn() {
+  const errEl = document.getElementById('fb-login-err');
+  errEl.style.display='none';
+  const provider = new firebase.auth.GoogleAuthProvider();
+  _fbAuth.signInWithPopup(provider).catch(e => {
+    errEl.textContent = 'Erro ao entrar: ' + e.message;
+    errEl.style.display='block';
+  });
+}
+
+function fbSignOut() {
+  if (!_fbAuth) return;
+  _fbAuth.signOut().then(() => {
+    db = { units:[] };
+    renderHome();
+  });
+}
+
+async function fbLoadFromCloud() {
+  if (!_fbStore || !_fbUser) return;
+  try {
+    const doc = await _fbStore.collection('users').doc(_fbUser.uid).collection('data').doc('main').get();
+    if (doc.exists) {
+      const data = doc.data();
+      if (data.db) {
+        db = data.db;
+        // ensure structure
+        if (!db.units) db.units = [];
+        db.units.forEach(u => {
+          if (!u.patients) u.patients = [];
+          u.patients.forEach(p => {
+            if (!p.labExams) p.labExams = {};
+            if (!p.imagingExams) p.imagingExams = [];
+            if (!p.status) p.status = 'ativo';
+          });
+        });
+        // persist locally as cache
+        try { localStorage.setItem('clinboard_db', JSON.stringify(db)); } catch {}
+      }
+      if (data.customNames) {
+        try { localStorage.setItem('clinboard_custom_names', JSON.stringify(data.customNames)); } catch {}
+      }
+    } else {
+      // First login: push local data to cloud
+      loadDB();
+      await fbPushToCloud();
+    }
+  } catch(e) {
+    console.warn('Erro ao carregar do Firestore:', e);
+    loadDB(); // fallback local
+  }
+}
+
+async function fbPushToCloud() {
+  if (!_fbStore || !_fbUser) return;
+  try {
+    const customNames = (() => { try { return JSON.parse(localStorage.getItem('clinboard_custom_names')||'{}'); } catch { return {}; } })();
+    await _fbStore.collection('users').doc(_fbUser.uid).collection('data').doc('main').set({
+      db, customNames, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch(e) { console.warn('Erro ao salvar no Firestore:', e); }
+}
+
+function fbScheduleSync() {
+  // Debounce: save to Firestore 1.5s after last change
+  clearTimeout(_fbSyncTimer);
+  _fbSyncTimer = setTimeout(fbPushToCloud, 1500);
+}
+
+// ======================================================================
 // STATE & DATA
 // ======================================================================
 let state = { view:'home', unitId:null, patientId:null, tab:'lab', filter:'ativo' };
@@ -461,7 +672,10 @@ let db = { units: [] };
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 function saveDB() {
+  // Save to localStorage (instant / offline cache)
   try { localStorage.setItem('clinboard_db', JSON.stringify(db)); } catch(e) { toast('Erro ao salvar dados. Storage cheio?','err'); }
+  // Async save to Firestore (debounced, fire-and-forget)
+  fbScheduleSync();
 }
 
 function loadDB() {
@@ -490,6 +704,7 @@ function loadCustomNames() {
 }
 function saveCustomNames(cn) {
   try { localStorage.setItem('clinboard_custom_names', JSON.stringify(cn)); } catch(e) {}
+  fbScheduleSync();
 }
 function applyCustomNames() {
   const cn = loadCustomNames();
@@ -2291,10 +2506,21 @@ document.addEventListener('keydown', e => {
 // ======================================================================
 // INIT
 // ======================================================================
-loadDB();
-applyCustomNames();
-renderHome();
-renderBreadcrumb();
+(function initApp() {
+  const cfg = fbGetConfig();
+  if (cfg) {
+    // Firebase config already saved → initialize and check auth
+    if (fbInit(cfg)) {
+      fbStartAuth();
+    } else {
+      // Init failed (bad config?) → run locally
+      loadDB(); applyCustomNames(); renderHome(); renderBreadcrumb();
+    }
+  } else {
+    // No config yet → show setup screen
+    fbShowSetup();
+  }
+})();
 
 // Registrar Service Worker para funcionamento offline (PWA)
 if ('serviceWorker' in navigator) {
