@@ -191,6 +191,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .toast{background:var(--g900);color:#fff;padding:11px 16px;border-radius:10px;font-size:14px;box-shadow:var(--shl);animation:slide-in .2s ease-out;display:flex;align-items:center;gap:8px}
 .toast.ok{background:#166534}
 .toast.err{background:#991b1b}
+.toast.warn{background:#92400e}
 @keyframes slide-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:var(--g100);border-radius:3px}
@@ -198,9 +199,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 ::-webkit-scrollbar-thumb:hover{background:var(--g400)}
 @media(max-width:640px){.main{padding:16px}.form-row{grid-template-columns:1fr}.pt-hdr{flex-direction:column}.ext-item{grid-template-columns:1fr 1fr;grid-template-rows:auto auto}.ext-header{display:none}}
 .diag-text{font-size:13px;color:var(--g600);font-style:italic;max-width:400px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* Firebase auth / setup overlays */
+/* Firebase auth / overlays */
 .fb-overlay{position:fixed;inset:0;background:rgba(15,34,54,.92);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px}
 .fb-card{background:#fff;border-radius:16px;padding:40px 36px;max-width:440px;width:100%;box-shadow:0 24px 48px rgba(0,0,0,.25);text-align:center}
+/* Loading spinner */
+.fb-loading{position:fixed;inset:0;background:rgba(15,34,54,.88);z-index:3500;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+.fb-spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.2);border-top-color:#7ec8f0;border-radius:50%;animation:fb-spin .7s linear infinite}
+.fb-loading-msg{color:rgba(255,255,255,.8);font-size:14px}
+@keyframes fb-spin{to{transform:rotate(360deg)}}
+/* Sync indicator dot */
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--g400);flex-shrink:0;transition:background .4s;cursor:default}
+.sync-dot.ok{background:#22c55e}
+.sync-dot.syncing{background:#f59e0b;animation:sync-pulse .9s ease-in-out infinite}
+.sync-dot.err{background:var(--danger)}
+@keyframes sync-pulse{0%,100%{opacity:1}50%{opacity:.25}}
 .fb-logo{font-size:42px;margin-bottom:12px}
 .fb-title{font-size:22px;font-weight:700;color:var(--g900);margin-bottom:6px}
 .fb-sub{font-size:14px;color:var(--g500);margin-bottom:28px;line-height:1.5}
@@ -217,29 +229,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 </head>
 <body>
 
-<!-- OVERLAY: FIREBASE SETUP -->
-<div class="fb-overlay" id="fb-setup-overlay" style="display:none">
-  <div class="fb-card">
-    <div class="fb-logo">🔧</div>
-    <div class="fb-title">Configurar sincronização</div>
-    <div class="fb-sub">Cole abaixo o objeto de configuração do seu projeto Firebase.<br>Essa configuração é pública e fica salva no seu navegador.</div>
-    <textarea id="fb-cfg-input" placeholder='{
-  "apiKey": "...",
-  "authDomain": "...",
-  "projectId": "...",
-  "storageBucket": "...",
-  "messagingSenderId": "...",
-  "appId": "..."
-}'></textarea>
-    <div class="fb-err" id="fb-setup-err"></div>
-    <div style="display:flex;gap:10px;justify-content:center;margin-top:20px">
-      <button class="btn btn-outline" onclick="fbSkipSetup()">Usar sem sincronização</button>
-      <button class="btn btn-success" onclick="fbSaveConfig()">Salvar e conectar</button>
-    </div>
-    <p style="font-size:12px;color:var(--g400);margin-top:16px">
-      <a href="https://console.firebase.google.com" target="_blank" style="color:var(--accent)">Como criar um projeto Firebase?</a>
-    </p>
-  </div>
+<!-- OVERLAY: LOADING -->
+<div class="fb-loading" id="fb-loading-overlay">
+  <div class="fb-spinner"></div>
+  <div class="fb-loading-msg" id="fb-loading-msg">Carregando dados...</div>
 </div>
 
 <!-- OVERLAY: LOGIN -->
@@ -253,7 +246,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       Entrar com Google
     </button>
     <div class="fb-err" id="fb-login-err"></div>
-    <p style="font-size:12px;color:var(--g400);margin-top:20px;cursor:pointer" onclick="fbResetConfig()">⚙ Alterar configuração Firebase</p>
   </div>
 </div>
 
@@ -289,6 +281,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <button class="btn btn-ghost btn-sm" onclick="exportData()">⬆ Exportar</button>
     <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬇ Importar<input type="file" accept=".json" id="import-file" style="display:none" onchange="importData(event)"></label>
     <div class="hdr-user" id="hdr-user" style="display:none">
+      <span class="sync-dot" id="sync-indicator" title="Sincronizado"></span>
       <span id="hdr-username" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
       <button class="btn btn-ghost btn-sm" onclick="fbSignOut()" title="Sair">⏻</button>
     </div>
@@ -542,52 +535,41 @@ function fbInit(cfg) {
   } catch(e) { console.warn('Firebase init error:', e); return false; }
 }
 
-function fbShowSetup()  { document.getElementById('fb-setup-overlay').style.display='flex'; }
-function fbHideSetup()  { document.getElementById('fb-setup-overlay').style.display='none'; }
-function fbShowLogin()  { document.getElementById('fb-login-overlay').style.display='flex'; }
-function fbHideLogin()  { document.getElementById('fb-login-overlay').style.display='none'; }
+// Versão do schema Firestore — incrementar ao mudar a estrutura
+const _SCHEMA_VERSION = 2;
 
-function fbSkipSetup() {
-  fbHideSetup();
-  // Run app without sync
-  loadDB(); applyCustomNames(); renderHome(); renderBreadcrumb();
+// IDs de unidades excluídas que ainda precisam ser removidas do Firestore
+const _pendingDeletes = new Set();
+
+// ── UI helpers ────────────────────────────────────────────────────────
+function fbShowLogin()    { document.getElementById('fb-login-overlay').style.display='flex'; }
+function fbHideLogin()    { document.getElementById('fb-login-overlay').style.display='none'; }
+function fbShowLoading(msg) {
+  const el = document.getElementById('fb-loading-overlay');
+  const msgEl = document.getElementById('fb-loading-msg');
+  if (msgEl) msgEl.textContent = msg || 'Carregando dados...';
+  if (el) el.style.display='flex';
+}
+function fbHideLoading()  { const el = document.getElementById('fb-loading-overlay'); if (el) el.style.display='none'; }
+
+function _setSyncStatus(status) {
+  const el = document.getElementById('sync-indicator');
+  if (!el) return;
+  el.className = 'sync-dot ' + status;
+  el.title = status==='ok' ? 'Dados sincronizados' : status==='syncing' ? 'Sincronizando...' : 'Erro de sincronização — dados locais preservados';
 }
 
-function fbSaveConfig() {
-  const raw = document.getElementById('fb-cfg-input').value.trim();
-  const errEl = document.getElementById('fb-setup-err');
-  errEl.style.display='none';
-  let cfg;
-  try { cfg = JSON.parse(raw); } catch {
-    errEl.textContent = 'JSON inválido. Verifique se copiou o objeto completo.';
-    errEl.style.display='block'; return;
-  }
-  if (!cfg.apiKey || !cfg.projectId) {
-    errEl.textContent = 'Configuração incompleta. Certifique-se de incluir apiKey e projectId.';
-    errEl.style.display='block'; return;
-  }
-  localStorage.setItem('clinboard_firebase_cfg', JSON.stringify(cfg));
-  fbHideSetup();
-  if (fbInit(cfg)) fbStartAuth();
-  else { fbShowLogin(); }
-}
-
-function fbResetConfig() {
-  localStorage.removeItem('clinboard_firebase_cfg');
-  fbHideLogin(); fbShowSetup();
-}
-
+// ── Auth ──────────────────────────────────────────────────────────────
 function fbStartAuth() {
   _fbAuth.onAuthStateChanged(user => {
     if (user) {
       _fbUser = user;
       fbHideLogin();
-      // Show user in header
       const hdrUser = document.getElementById('hdr-user');
       const hdrName = document.getElementById('hdr-username');
       if (hdrUser) hdrUser.style.display='flex';
       if (hdrName) hdrName.textContent = user.displayName || user.email;
-      // Load data from Firestore then render
+      _setSyncStatus('syncing');
       fbLoadFromCloud().then(() => {
         applyCustomNames(); renderHome(); renderBreadcrumb();
       });
@@ -614,57 +596,126 @@ function fbSignOut() {
   if (!_fbAuth) return;
   _fbAuth.signOut().then(() => {
     db = { units:[] };
+    localStorage.removeItem('clinboard_db');
+    localStorage.removeItem('clinboard_custom_names');
     renderHome();
   });
 }
 
+// ── Estrutura do banco ────────────────────────────────────────────────
+function _ensureDbStructure() {
+  if (!db.units) db.units = [];
+  db.units.forEach(u => {
+    if (!u.patients) u.patients = [];
+    u.patients.forEach(p => {
+      if (!p.labExams) p.labExams = {};
+      if (!p.imagingExams) p.imagingExams = [];
+      if (!p.status) p.status = 'ativo';
+    });
+  });
+}
+
+function _getCustomNames() {
+  try { return JSON.parse(localStorage.getItem('clinboard_custom_names') || '{}'); } catch { return {}; }
+}
+
+// ── Firestore: carregar ───────────────────────────────────────────────
+// Estrutura v2: users/{uid}/data/meta + users/{uid}/data/units/{unitId}
+// Migra automaticamente do formato v1 (data/main) se encontrado
 async function fbLoadFromCloud() {
   if (!_fbStore || !_fbUser) return;
+  fbShowLoading('Carregando dados...');
   try {
-    const doc = await _fbStore.collection('users').doc(_fbUser.uid).collection('data').doc('main').get();
-    if (doc.exists) {
-      const data = doc.data();
-      if (data.db) {
-        db = data.db;
-        // ensure structure
-        if (!db.units) db.units = [];
-        db.units.forEach(u => {
-          if (!u.patients) u.patients = [];
-          u.patients.forEach(p => {
-            if (!p.labExams) p.labExams = {};
-            if (!p.imagingExams) p.imagingExams = [];
-            if (!p.status) p.status = 'ativo';
-          });
-        });
-        // persist locally as cache
-        try { localStorage.setItem('clinboard_db', JSON.stringify(db)); } catch {}
-      }
-      if (data.customNames) {
-        try { localStorage.setItem('clinboard_custom_names', JSON.stringify(data.customNames)); } catch {}
+    const baseRef = _fbStore.collection('users').doc(_fbUser.uid).collection('data');
+    const metaDoc = await baseRef.doc('meta').get();
+
+    if (metaDoc.exists && metaDoc.data().schemaVersion === _SCHEMA_VERSION) {
+      // ── Formato v2: carregar por subcoleção de unidades ──
+      const metaData = metaDoc.data();
+      const unitIds = metaData.unitIds || [];
+      const unitDocs = await Promise.all(unitIds.map(id => baseRef.collection('units').doc(id).get()));
+      db = { units: [] };
+      unitDocs.forEach(d => { if (d.exists) db.units.push(d.data()); });
+      _ensureDbStructure();
+      if (metaData.customNames) {
+        try { localStorage.setItem('clinboard_custom_names', JSON.stringify(metaData.customNames)); } catch {}
       }
     } else {
-      // First login: push local data to cloud
-      loadDB();
-      await fbPushToCloud();
+      // ── Tentativa de migração do formato v1 ──
+      const oldDoc = await baseRef.doc('main').get();
+      if (oldDoc.exists) {
+        const data = oldDoc.data();
+        if (data.db) {
+          db = data.db;
+          _ensureDbStructure();
+          if (data.customNames) {
+            try { localStorage.setItem('clinboard_custom_names', JSON.stringify(data.customNames)); } catch {}
+          }
+          // Migrar para v2 e apagar documento antigo
+          fbShowLoading('Migrando dados para novo formato...');
+          await fbPushToCloud();
+          await baseRef.doc('main').delete();
+          toast('Dados migrados para o novo formato ✓', 'ok');
+        }
+      } else {
+        // Primeiro login: enviar dados locais para a nuvem
+        loadDB();
+        await fbPushToCloud();
+      }
     }
+
+    try { localStorage.setItem('clinboard_db', JSON.stringify(db)); } catch {}
+    _setSyncStatus('ok');
   } catch(e) {
     console.warn('Erro ao carregar do Firestore:', e);
-    loadDB(); // fallback local
+    _setSyncStatus('err');
+    toast('Erro ao carregar dados da nuvem — usando dados locais', 'warn');
+    loadDB();
+  } finally {
+    fbHideLoading();
   }
 }
 
+// ── Firestore: salvar ─────────────────────────────────────────────────
 async function fbPushToCloud() {
   if (!_fbStore || !_fbUser) return;
+  _setSyncStatus('syncing');
   try {
-    const customNames = (() => { try { return JSON.parse(localStorage.getItem('clinboard_custom_names')||'{}'); } catch { return {}; } })();
-    await _fbStore.collection('users').doc(_fbUser.uid).collection('data').doc('main').set({
-      db, customNames, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    const baseRef = _fbStore.collection('users').doc(_fbUser.uid).collection('data');
+    const customNames = _getCustomNames();
+    const currentUnitIds = db.units.map(u => u.id);
+
+    // Batch atômico: meta + todas as unidades
+    const batch = _fbStore.batch();
+    batch.set(baseRef.doc('meta'), {
+      customNames,
+      unitIds: currentUnitIds,
+      schemaVersion: _SCHEMA_VERSION,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-  } catch(e) { console.warn('Erro ao salvar no Firestore:', e); }
+    db.units.forEach(unit => {
+      batch.set(baseRef.collection('units').doc(unit.id), unit);
+    });
+    await batch.commit();
+
+    // Remover documentos de unidades excluídas
+    if (_pendingDeletes.size > 0) {
+      const delBatch = _fbStore.batch();
+      _pendingDeletes.forEach(id => delBatch.delete(baseRef.collection('units').doc(id)));
+      await delBatch.commit();
+      _pendingDeletes.clear();
+    }
+
+    _setSyncStatus('ok');
+  } catch(e) {
+    console.warn('Erro ao salvar no Firestore:', e);
+    _setSyncStatus('err');
+  }
 }
 
 function fbScheduleSync() {
-  // Debounce: save to Firestore 1.5s after last change
+  // Debounce: salva no Firestore 1.5s após a última alteração
+  _setSyncStatus('syncing');
   clearTimeout(_fbSyncTimer);
   _fbSyncTimer = setTimeout(fbPushToCloud, 1500);
 }
@@ -676,7 +727,7 @@ let state = { view:'home', unitId:null, patientId:null, tab:'lab', filter:'ativo
 
 let db = { units: [] };
 
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function uid() { return crypto.randomUUID(); }
 
 function saveDB() {
   // Save to localStorage (instant / offline cache)
@@ -782,7 +833,7 @@ function renderHome() {
         <button class="icon-btn del" onclick="deleteUnit('${u.id}')" title="Excluir">🗑️</button>
       </div>
       <div class="unit-icon">🏥</div>
-      <div class="unit-name">${u.name}</div>
+      <div class="unit-name">${escHtml(u.name)}</div>
       <div class="unit-stats">${active} paciente${active!==1?'s':''} ativo${active!==1?'s':''} · ${total} total</div>
     </div>`;
   });
@@ -793,10 +844,8 @@ function renderHome() {
 // ======================================================================
 // RENDER UNIT
 // ======================================================================
-let currentFilter = 'ativo';
-
 function setFilter(f, btn) {
-  currentFilter = f;
+  state.filter = f;
   document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderPatients();
@@ -816,7 +865,7 @@ function renderPatients() {
   if (!u) return;
   const q = (document.getElementById('pt-search').value||'').toLowerCase();
   const rows = u.patients.filter(p => {
-    if (p.status !== currentFilter) return false;
+    if (p.status !== state.filter) return false;
     if (!q) return true;
     return p.nome.toLowerCase().includes(q) || p.leito.toLowerCase().includes(q) || (p.diagnostico||'').toLowerCase().includes(q);
   });
@@ -836,11 +885,11 @@ function renderPatients() {
       : `<span class="badge badge-arch">Arquivado</span>`;
     const labCount = Object.keys(p.labExams||{}).length;
     return `<tr onclick="goPatient('${p.id}')">
-      <td><span class="leito-bd">${p.leito}</span></td>
-      <td><div class="pt-name">${p.nome}</div><div style="font-size:11px;color:var(--g400);margin-top:2px">${labCount} parâmetro${labCount!==1?'s':''}</div></td>
-      <td>${p.idade||'—'}</td>
+      <td><span class="leito-bd">${escHtml(p.leito)}</span></td>
+      <td><div class="pt-name">${escHtml(p.nome)}</div><div style="font-size:11px;color:var(--g400);margin-top:2px">${labCount} parâmetro${labCount!==1?'s':''}</div></td>
+      <td>${escHtml(p.idade||'—')}</td>
       <td>${admStr}</td>
-      <td><div class="diag-text">${p.diagnostico||'—'}</div></td>
+      <td><div class="diag-text">${escHtml(p.diagnostico||'—')}</div></td>
       <td>${badge}</td>
       <td onclick="event.stopPropagation()" style="white-space:nowrap">
         <button class="icon-btn" onclick="openPatientModal('${p.id}')" title="Editar">✏️</button>
@@ -863,10 +912,10 @@ function renderPatient() {
   document.getElementById('pt-name-h2').textContent = p.nome;
   const admStr = p.dataAdmissao ? new Date(p.dataAdmissao+'T00:00:00').toLocaleDateString('pt-BR') : '—';
   document.getElementById('pt-meta').innerHTML = `
-    <div class="pt-meta-i">🛏 Leito: <strong>${p.leito}</strong></div>
-    <div class="pt-meta-i">👤 Idade: <strong>${p.idade||'—'}</strong></div>
+    <div class="pt-meta-i">🛏 Leito: <strong>${escHtml(p.leito)}</strong></div>
+    <div class="pt-meta-i">👤 Idade: <strong>${escHtml(p.idade||'—')}</strong></div>
     <div class="pt-meta-i">📅 Admissão: <strong>${admStr}</strong></div>
-    <div class="pt-meta-i">🔍 <strong>${p.diagnostico||'Sem diagnóstico registrado'}</strong></div>
+    <div class="pt-meta-i">🔍 <strong>${escHtml(p.diagnostico||'Sem diagnóstico registrado')}</strong></div>
   `;
   const badge = p.status==='ativo'
     ? `<span class="badge badge-active">● Internado</span>`
@@ -1184,6 +1233,7 @@ function deleteUnit(id) {
   if (!u) return;
   confirm2(`Excluir a unidade "${u.name}" e todos os seus pacientes?`, ()=>{
     db.units = db.units.filter(x=>x.id!==id);
+    _pendingDeletes.add(id); // garantir remoção do documento no Firestore
     saveDB(); renderHome(); toast('Unidade excluída');
   });
 }
@@ -1400,8 +1450,6 @@ function parseRef(s) {
   if (m) return {refMin:pNum(m[1]),refMax:pNum(m[2])};
   m = s.match(/([0-9][0-9.,]*)\s+[aA]\s+([0-9][0-9.,]*)/);
   if (m) return {refMin:pNum(m[1]),refMax:pNum(m[2])};
-  m = s.match(/([0-9][0-9.,]*)\s+[aA]\s+([0-9][0-9.,]*)/);
-  if (m) return {refMin:pNum(m[1]),refMax:pNum(m[2])};
   m = s.match(/(?:[Ii]nferior\s+a|[Aa]té|<)\s*([0-9][0-9.,]*)/);
   if (m) return {refMin:0,refMax:pNum(m[1])};
   m = s.match(/(?:[Ss]uperior\s+a|>)\s*([0-9][0-9.,]*)/);
@@ -1417,6 +1465,7 @@ function getStatus(v,mn,mx) {
   return 'normal';
 }
 
+// Retorna a data encontrada no texto, ou null se não encontrar
 function findDate(text, format) {
   let m;
   m = text.match(/[Cc]oletado?\s*\(?\s*(\d{2}\/\d{2}\/\d{4})/);
@@ -1429,7 +1478,7 @@ function findDate(text, format) {
   if (m) return m[1];
   m = text.match(/(\d{2}\/\d{2}\/\d{4})/);
   if (m) return m[1];
-  return new Date().toLocaleDateString('pt-BR');
+  return null; // data não encontrada — chamador deve avisar o usuário
 }
 
 // Normalize exam name to consistent label
@@ -1481,7 +1530,7 @@ const NAME_MAP = {
   'GGT':'GGT','FOSFATASE ALCALINA':'Fosfatase Alcalina',
   'FERRITINA':'Ferritina','FERRO SERICO':'Ferro Sérico','FERRO SÉRICO':'Ferro Sérico',
   'TSH':'TSH','T4 LIVRE':'T4 Livre','T3 LIVRE':'T3 Livre',
-  'UREIA':'Ureia','CLORO':'Cloro',
+  'CLORO':'Cloro',
   'ERITROBLASTOS':'Eritroblastos',
   // Variantes com "DOSAGEM DE" (padrão HUGO)
   'DOSAGEM DE CREATININA':'Creatinina','DOSAGEM DE CREATININA TLR':'Creatinina',
@@ -1548,7 +1597,6 @@ const NAME_MAP = {
   '25-OH VITAMINA D':'Vitamina D',
   'COLESTEROL TOTAL':'Colesterol Total','COLESTEROL HDL':'HDL','COLESTEROL LDL':'LDL',
   'HDL':'HDL','LDL':'LDL','VLDL':'VLDL','TRIGLICERIDES':'Triglicérides','TRIGLICÉRIDES':'Triglicérides',
-  'FOSFORO':'Fósforo','FÓSFORO':'Fósforo',
   'PARATORMONIO':'PTH','PARATORMÔNIO':'PTH','PTH':'PTH',
   'INSULINA':'Insulina','PEPTIDEO C':'Peptídeo C','PEPTÍDEO C':'Peptídeo C',
   'CORTISOL':'Cortisol','PROLACTINA':'Prolactina',
@@ -1562,19 +1610,12 @@ const NAME_MAP = {
   'HEMOGLOBINAS':'Hemoglobina','HEMATOCRITO':'Hematócrito',
   'VCM':'VCM','HCM':'HCM','CHCM':'CHCM','RDW':'RDW',
   'PDW':'PDW','PCT':'PCT','VPM':'VPM',
-  'LEUCOCITOS':'Leucócitos','LINFOCITOS':'Linfócitos',
-  'MONOCITOS':'Monócitos','EOSINOFILOS':'Eosinófilos','EOSINÓFILOS':'Eosinófilos',
-  'BASOFILOS':'Basófilos','BASÓFILOS':'Basófilos',
-  'MIELOCITOS':'Mielócitos','MIELÓCITOS':'Mielócitos',
   'METAMIELOCITOS':'Metamielócitos','METAMIELÓCITOS':'Metamielócitos',
   'NEUTR.TOTAIS':'Neutrófilos','NEUTROFILOS TOTAIS':'Neutrófilos',
   'NEUTRÓFILOS TOTAIS':'Neutrófilos',
   'LINF.ATIPICOS':'Linfócitos Atípicos','LINF.ATÍPICOS':'Linfócitos Atípicos',
   'PLASMOCITOS':'Plasmócitos','PLASMÓCITOS':'Plasmócitos',
   // Pio X bioquímica
-  'UREIA':'Ureia','URÉIA':'Ureia',
-  'CREATININA':'Creatinina',
-  'CÁLCIO':'Cálcio Total','CALCIO':'Cálcio Total',
   // Pio X EAS 3-colunas (parâmetros em maiúsculas)
   'PROTEÍNA (ALBUMINA)':'Proteínas (U)','PROTEINA (ALBUMINA)':'Proteínas (U)',
   'CETONA':'Cetonas','BILIRRUBINA':'Bilirrubina (U)',
@@ -1704,7 +1745,7 @@ function parseParamRow(line) {
 function parsePDFText(text, format) {
   const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
   const results = [];
-  const date = findDate(text, format);
+  const date = findDate(text, format) || new Date().toLocaleDateString('pt-BR');
 
   // Identify single-exam blocks bounded by "Resultado:" lines
   // And also multi-param sections
@@ -2195,6 +2236,7 @@ async function processFile(file) {
     const format = detectFormat(text);
     const results = parsePDFText(text, format);
     const date = findDate(text, format);
+    if (!date) toast('Data de coleta não encontrada no PDF — verifique a data antes de salvar.', 'warn');
     if (results.length === 0) {
       document.getElementById('err-msg').textContent = 'Não foi possível identificar resultados neste PDF. Adicione os parâmetros manualmente.';
       showUploadStep('err');
@@ -2255,25 +2297,22 @@ function confirmSynonym(i) {
   const inp = document.getElementById('syn-inp-'+i);
   const canonical = inp?.value.trim();
   if (!canonical) { toast('Digite o nome do parâmetro','err'); return; }
-  if (!PARAM_WHITELIST.has(canonical)) {
-    // Allow creating a new canonical too
-    if (!confirm(`"${canonical}" não está na lista. Deseja criar como novo parâmetro?`)) return;
+  const applyCanonical = () => {
     const cn2 = loadCustomNames();
     if (!cn2.newParams.includes(canonical)) { cn2.newParams.push(canonical); }
     cn2.synonyms[r.name.trim().toUpperCase().replace(/\s+/g,' ')] = canonical;
     saveCustomNames(cn2);
     NAME_MAP[r.name.trim().toUpperCase().replace(/\s+/g,' ')] = canonical;
     PARAM_WHITELIST.add(canonical);
+    r.name = canonical; r.known = true; r.included = true;
+    _markKnown(i, canonical);
+    toast(`Mapeado para "${canonical}" ✓`, 'ok');
+  };
+  if (!PARAM_WHITELIST.has(canonical)) {
+    confirm2(`"${canonical}" não está na lista. Deseja criar como novo parâmetro?`, applyCanonical);
   } else {
-    const cn2 = loadCustomNames();
-    cn2.synonyms[r.name.trim().toUpperCase().replace(/\s+/g,' ')] = canonical;
-    saveCustomNames(cn2);
-    NAME_MAP[r.name.trim().toUpperCase().replace(/\s+/g,' ')] = canonical;
-    PARAM_WHITELIST.add(canonical);
+    applyCanonical();
   }
-  r.name = canonical; r.known = true; r.included = true;
-  _markKnown(i, canonical);
-  toast(`Mapeado para "${canonical}" ✓`, 'ok');
 }
 
 function _markKnown(i, newName) {
