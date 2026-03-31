@@ -533,6 +533,14 @@ function fbInit(cfg) {
     _fbApp   = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(cfg);
     _fbAuth  = firebase.auth();
     _fbStore = firebase.firestore();
+    // Cache offline — permite leitura mesmo sem conexão e sobrevive ao redirect de login
+    _fbStore.enablePersistence({ synchronizeTabs: true }).catch(e => {
+      if (e.code === 'failed-precondition') {
+        console.log('Firestore persistence: múltiplas abas abertas, cache desativado');
+      } else if (e.code === 'unimplemented') {
+        console.log('Firestore persistence não suportada neste browser');
+      }
+    });
     console.log('Firebase iniciado. Projeto:', cfg.projectId);
     return true;
   } catch(e) {
@@ -667,7 +675,7 @@ function _fbRefs() {
 
 // ── Firestore: carregar ───────────────────────────────────────────────
 // Migra automaticamente do formato v1 (data/main) se encontrado
-async function fbLoadFromCloud() {
+async function fbLoadFromCloud(_retry = 0) {
   if (!_fbStore || !_fbUser) return;
   fbShowLoading('Carregando dados...');
   try {
@@ -711,9 +719,19 @@ async function fbLoadFromCloud() {
     try { localStorage.setItem('clinboard_db', JSON.stringify(db)); } catch {}
     _setSyncStatus('ok');
   } catch(e) {
+    const offline = e?.code === 'unavailable' || (e?.message || '').toLowerCase().includes('offline');
+    if (offline && _retry < 4) {
+      // Firestore ainda conectando após redirect de login — aguarda e tenta de novo
+      fbHideLoading();
+      const delay = ((_retry + 1) * 1500);
+      console.log(`Firestore offline, nova tentativa em ${delay}ms... (${_retry + 1}/4)`);
+      fbShowLoading(`Conectando... tentativa ${_retry + 2}/5`);
+      await new Promise(r => setTimeout(r, delay));
+      return fbLoadFromCloud(_retry + 1);
+    }
     console.warn('Erro ao carregar do Firestore:', e);
     _setSyncStatus('err');
-    const msg = e && e.code === 'permission-denied'
+    const msg = e?.code === 'permission-denied'
       ? 'Permissão negada no Firestore — verifique as Regras de Segurança no console Firebase'
       : `Erro ao carregar dados da nuvem (${e?.code || e?.message || e}) — usando dados locais`;
     toast(msg, 'warn');
