@@ -568,14 +568,20 @@ function _setSyncStatus(status) {
 
 // ── Auth ──────────────────────────────────────────────────────────────
 function fbStartAuth() {
-  // Captura resultado do signInWithRedirect após retorno da página do Google
-  _fbAuth.getRedirectResult().catch(e => {
-    if (e.code !== 'auth/no-current-user') {
+  // Captura resultado do signInWithRedirect (se houver) e loga tudo para diagnóstico
+  _fbAuth.getRedirectResult()
+    .then(result => {
+      if (result && result.user) {
+        console.log('[Auth] getRedirectResult OK:', result.user.email);
+      } else {
+        console.log('[Auth] getRedirectResult: sem redirecionamento pendente');
+      }
+    })
+    .catch(e => {
+      console.warn('[Auth] getRedirectResult erro — code:', e.code, '— msg:', e.message);
       const errEl = document.getElementById('fb-login-err');
-      if (errEl) { errEl.textContent = 'Erro ao entrar: ' + e.message; errEl.style.display='block'; }
-      console.warn('Redirect result error:', e);
-    }
-  });
+      if (errEl) { errEl.textContent = 'Erro ao entrar: ' + (e.message || e.code); errEl.style.display='block'; }
+    });
 
   _fbAuth.onAuthStateChanged(user => {
     console.log('[Auth] onAuthStateChanged — user:', user ? user.email : 'null');
@@ -619,11 +625,23 @@ function fbSignIn() {
   const errEl = document.getElementById('fb-login-err');
   errEl.style.display='none';
   const provider = new firebase.auth.GoogleAuthProvider();
-  // signInWithRedirect evita bloqueio por Cross-Origin-Opener-Policy (GitHub Pages, etc.)
-  _fbAuth.signInWithRedirect(provider).catch(e => {
-    errEl.textContent = 'Erro ao entrar: ' + e.message;
-    errEl.style.display='block';
-  });
+  console.log('[Auth] iniciando signInWithPopup...');
+  _fbAuth.signInWithPopup(provider)
+    .then(result => console.log('[Auth] signInWithPopup OK:', result.user.email))
+    .catch(e => {
+      console.warn('[Auth] signInWithPopup erro — code:', e.code, '— msg:', e.message);
+      // Se popup bloqueado, tenta redirect como fallback
+      if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user') {
+        console.log('[Auth] popup bloqueado, tentando redirect...');
+        _fbAuth.signInWithRedirect(provider).catch(e2 => {
+          errEl.textContent = 'Erro ao entrar: ' + (e2.message || e2.code);
+          errEl.style.display='block';
+        });
+      } else {
+        errEl.textContent = 'Erro ao entrar: ' + (e.message || e.code);
+        errEl.style.display='block';
+      }
+    });
 }
 
 function fbSignOut() {
