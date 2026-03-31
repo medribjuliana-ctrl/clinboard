@@ -281,7 +281,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <button class="btn btn-ghost btn-sm" onclick="exportData()">⬆ Exportar</button>
     <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬇ Importar<input type="file" accept=".json" id="import-file" style="display:none" onchange="importData(event)"></label>
     <div class="hdr-user" id="hdr-user" style="display:none">
-      <span class="sync-dot" id="sync-indicator" title="Sincronizado"></span>
+      <span class="sync-dot" id="sync-indicator" title="Sincronizado" onclick="fbForcSync()" style="cursor:pointer"></span>
       <span id="hdr-username" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
       <button class="btn btn-ghost btn-sm" onclick="fbSignOut()" title="Sair">⏻</button>
     </div>
@@ -528,11 +528,17 @@ function fbGetConfig() { return _FB_CONFIG; }
 
 function fbInit(cfg) {
   try {
-    _fbApp   = firebase.initializeApp(cfg);
+    // Evita erro "already exists" em hot-reload / service worker
+    _fbApp   = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(cfg);
     _fbAuth  = firebase.auth();
     _fbStore = firebase.firestore();
+    console.log('Firebase iniciado. Projeto:', cfg.projectId);
     return true;
-  } catch(e) { console.warn('Firebase init error:', e); return false; }
+  } catch(e) {
+    console.error('Firebase init error:', e);
+    toast('Erro ao iniciar Firebase: ' + e.message, 'warn');
+    return false;
+  }
 }
 
 // Versão do schema Firestore — incrementar ao mudar a estrutura
@@ -580,6 +586,22 @@ function fbStartAuth() {
       fbShowLogin();
     }
   });
+}
+
+// Sincronização forçada manual — clique no dot de status ou chame pelo console
+async function fbForcSync() {
+  if (!_fbUser) { toast('Não autenticado', 'warn'); return; }
+  console.log('=== Sync manual iniciado ===');
+  console.log('UID:', _fbUser.uid);
+  console.log('Unidades em memória:', db.units?.length ?? 0);
+  try {
+    await fbPushToCloud();
+    toast('Sincronizado com a nuvem ✓', 'ok');
+    console.log('=== Sync concluído com sucesso ===');
+  } catch(e) {
+    console.error('=== Sync falhou ===', e);
+    toast('Falha ao sincronizar: ' + (e?.code || e?.message || e), 'warn');
+  }
 }
 
 function fbSignIn() {
@@ -680,7 +702,10 @@ async function fbLoadFromCloud() {
   } catch(e) {
     console.warn('Erro ao carregar do Firestore:', e);
     _setSyncStatus('err');
-    toast('Erro ao carregar dados da nuvem — usando dados locais', 'warn');
+    const msg = e && e.code === 'permission-denied'
+      ? 'Permissão negada no Firestore — verifique as Regras de Segurança no console Firebase'
+      : `Erro ao carregar dados da nuvem (${e?.code || e?.message || e}) — usando dados locais`;
+    toast(msg, 'warn');
     loadDB();
   } finally {
     fbHideLoading();
@@ -719,6 +744,9 @@ async function fbPushToCloud() {
   } catch(e) {
     console.warn('Erro ao salvar no Firestore:', e);
     _setSyncStatus('err');
+    if (e && e.code === 'permission-denied') {
+      toast('Permissão negada — verifique as Regras de Segurança no console Firebase', 'warn');
+    }
   }
 }
 
