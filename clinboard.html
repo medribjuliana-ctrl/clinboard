@@ -533,14 +533,6 @@ function fbInit(cfg) {
     _fbApp   = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(cfg);
     _fbAuth  = firebase.auth();
     _fbStore = firebase.firestore();
-    // Cache offline — permite leitura mesmo sem conexão e sobrevive ao redirect de login
-    _fbStore.enablePersistence({ synchronizeTabs: true }).catch(e => {
-      if (e.code === 'failed-precondition') {
-        console.log('Firestore persistence: múltiplas abas abertas, cache desativado');
-      } else if (e.code === 'unimplemented') {
-        console.log('Firestore persistence não suportada neste browser');
-      }
-    });
     console.log('Firebase iniciado. Projeto:', cfg.projectId);
     return true;
   } catch(e) {
@@ -586,6 +578,7 @@ function fbStartAuth() {
   });
 
   _fbAuth.onAuthStateChanged(user => {
+    console.log('[Auth] onAuthStateChanged — user:', user ? user.email : 'null');
     if (user) {
       _fbUser = user;
       fbHideLogin();
@@ -674,18 +667,31 @@ function _fbRefs() {
 }
 
 // ── Firestore: carregar ───────────────────────────────────────────────
-// Migra automaticamente do formato v1 (data/main) se encontrado
-async function fbLoadFromCloud(_retry = 0) {
-  if (!_fbStore || !_fbUser) return;
+async function fbLoadFromCloud() {
+  if (!_fbStore || !_fbUser) {
+    console.warn('[Sync] fbLoadFromCloud abortado: store=' + !!_fbStore + ' user=' + !!_fbUser);
+    return;
+  }
   fbShowLoading('Carregando dados...');
+  try {
+    await _fbLoadWithRetry(0);
+  } finally {
+    fbHideLoading();
+  }
+}
+
+async function _fbLoadWithRetry(_retry) {
+  console.log(`[Sync] tentativa ${_retry + 1}/5 — uid: ${_fbUser?.uid}`);
   try {
     const { meta, units, dataCol } = _fbRefs();
     const metaDoc = await meta.get();
+    console.log('[Sync] meta.get OK — exists:', metaDoc.exists);
 
     if (metaDoc.exists && metaDoc.data().schemaVersion === _SCHEMA_VERSION) {
-      // ── Formato v2: carregar por coleção de unidades ──
+      // ── Formato v2 ──
       const metaData = metaDoc.data();
       const unitIds = metaData.unitIds || [];
+      console.log('[Sync] v2 — unitIds:', unitIds);
       const unitDocs = await Promise.all(unitIds.map(id => units.doc(id).get()));
       db = { units: [] };
       unitDocs.forEach(d => { if (d.exists) db.units.push(d.data()); });
@@ -694,9 +700,10 @@ async function fbLoadFromCloud(_retry = 0) {
         try { localStorage.setItem('clinboard_custom_names', JSON.stringify(metaData.customNames)); } catch {}
       }
     } else {
-      // ── Tentativa de migração do formato v1 ──
+      // ── Migração v1 ou primeiro login ──
       const oldDoc = await dataCol.doc('main').get();
       if (oldDoc.exists) {
+        console.log('[Sync] migrando v1 → v2');
         const data = oldDoc.data();
         if (data.db) {
           db = data.db;
@@ -704,13 +711,13 @@ async function fbLoadFromCloud(_retry = 0) {
           if (data.customNames) {
             try { localStorage.setItem('clinboard_custom_names', JSON.stringify(data.customNames)); } catch {}
           }
-          fbShowLoading('Migrando dados para novo formato...');
+          fbShowLoading('Migrando dados...');
           await fbPushToCloud();
           await dataCol.doc('main').delete();
           toast('Dados migrados para o novo formato ✓', 'ok');
         }
       } else {
-        // Primeiro login: enviar dados locais para a nuvem
+        console.log('[Sync] primeiro login — enviando dados locais');
         loadDB();
         await fbPushToCloud();
       }
@@ -718,26 +725,24 @@ async function fbLoadFromCloud(_retry = 0) {
 
     try { localStorage.setItem('clinboard_db', JSON.stringify(db)); } catch {}
     _setSyncStatus('ok');
+    console.log('[Sync] concluído — unidades:', db.units?.length);
+
   } catch(e) {
     const offline = e?.code === 'unavailable' || (e?.message || '').toLowerCase().includes('offline');
+    console.warn(`[Sync] erro (code=${e?.code}):`, e?.message || e);
     if (offline && _retry < 4) {
-      // Firestore ainda conectando após redirect de login — aguarda e tenta de novo
-      fbHideLoading();
-      const delay = ((_retry + 1) * 1500);
-      console.log(`Firestore offline, nova tentativa em ${delay}ms... (${_retry + 1}/4)`);
+      const delay = (_retry + 1) * 2000;
       fbShowLoading(`Conectando... tentativa ${_retry + 2}/5`);
+      console.log(`[Sync] aguardando ${delay}ms antes de nova tentativa`);
       await new Promise(r => setTimeout(r, delay));
-      return fbLoadFromCloud(_retry + 1);
+      return _fbLoadWithRetry(_retry + 1);
     }
-    console.warn('Erro ao carregar do Firestore:', e);
     _setSyncStatus('err');
     const msg = e?.code === 'permission-denied'
-      ? 'Permissão negada no Firestore — verifique as Regras de Segurança no console Firebase'
-      : `Erro ao carregar dados da nuvem (${e?.code || e?.message || e}) — usando dados locais`;
+      ? 'Permissão negada — verifique as Regras de Segurança no console Firebase'
+      : `Erro ao sincronizar (${e?.code || e?.message || e}) — usando dados locais`;
     toast(msg, 'warn');
     loadDB();
-  } finally {
-    fbHideLoading();
   }
 }
 
