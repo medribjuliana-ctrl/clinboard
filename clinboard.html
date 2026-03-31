@@ -607,6 +607,9 @@ function fbStartAuth() {
       _fbUser = null;
       const hdrUser = document.getElementById('hdr-user');
       if (hdrUser) hdrUser.style.display='none';
+      // Cancela sync pendente (segurança extra caso fbSignOut não tenha sido chamado)
+      clearTimeout(_fbSyncTimer);
+      _fbSyncTimer = null;
       fbShowLogin();
     }
   });
@@ -653,17 +656,32 @@ function fbSignIn() {
 
 function fbSignOut() {
   if (!_fbAuth) return;
-  // Limpa estado local de forma SÍNCRONA antes do signOut assíncrono.
-  // Isso evita a condição de corrida onde signOut().then() poderia
-  // executar DEPOIS que o usuário já havia feito login novamente,
-  // sobrescrevendo db com dados vazios e limpando a tela.
+  console.log('[Auth] fbSignOut iniciado');
+
+  // ── 1. Cancela qualquer sync pendente IMEDIATAMENTE ──────────────────
+  // Se não cancelar, o timer de 1,5s pode disparar fbPushToCloud() com
+  // db vazio enquanto _fbUser ainda é válido, sobrescrevendo o Firestore.
+  clearTimeout(_fbSyncTimer);
+  _fbSyncTimer = null;
+
+  // ── 2. Zera _fbUser ANTES de limpar db ───────────────────────────────
+  // Garante que fbPushToCloud() retorne early em qualquer timer que
+  // eventualmente ainda dispare (JS pode ter microtasks enfileiradas).
+  _fbUser = null;
+
+  // ── 3. Limpa estado local ─────────────────────────────────────────────
   db = { units: [] };
   try { localStorage.removeItem('clinboard_db'); } catch {}
   try { localStorage.removeItem('clinboard_custom_names'); } catch {}
   renderHome();
-  _fbLoadInProgress = false; // reseta lock para o próximo login
-  // signOut em si não precisa de callback — onAuthStateChanged cuida do resto
+
+  // ── 4. Reseta flags ───────────────────────────────────────────────────
+  _fbLoadInProgress = false;
+
+  // ── 5. Sign out no Firebase ───────────────────────────────────────────
+  // onAuthStateChanged(null) vai disparar depois — só precisa mostrar o login
   _fbAuth.signOut().catch(e => console.warn('[Auth] signOut erro:', e.message));
+  console.log('[Auth] fbSignOut: estado local limpo, signOut assíncrono iniciado');
 }
 
 // ── Estrutura do banco ────────────────────────────────────────────────
@@ -772,7 +790,8 @@ async function _fbLoadWithRetry(_retry) {
 
     try { localStorage.setItem('clinboard_db', JSON.stringify(db)); } catch {}
     _setSyncStatus('ok');
-    console.log('[Sync] concluído — unidades:', db.units?.length);
+    console.log('[Sync] ✅ concluído — unidades carregadas:', db.units?.length,
+      db.units?.map(u => u.name));
 
   } catch(e) {
     const code = e?.code || '';
