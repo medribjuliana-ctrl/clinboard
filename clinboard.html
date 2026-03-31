@@ -567,6 +567,15 @@ function _setSyncStatus(status) {
 
 // ── Auth ──────────────────────────────────────────────────────────────
 function fbStartAuth() {
+  // Captura resultado do signInWithRedirect após retorno da página do Google
+  _fbAuth.getRedirectResult().catch(e => {
+    if (e.code !== 'auth/no-current-user') {
+      const errEl = document.getElementById('fb-login-err');
+      if (errEl) { errEl.textContent = 'Erro ao entrar: ' + e.message; errEl.style.display='block'; }
+      console.warn('Redirect result error:', e);
+    }
+  });
+
   _fbAuth.onAuthStateChanged(user => {
     if (user) {
       _fbUser = user;
@@ -608,7 +617,8 @@ function fbSignIn() {
   const errEl = document.getElementById('fb-login-err');
   errEl.style.display='none';
   const provider = new firebase.auth.GoogleAuthProvider();
-  _fbAuth.signInWithPopup(provider).catch(e => {
+  // signInWithRedirect evita bloqueio por Cross-Origin-Opener-Policy (GitHub Pages, etc.)
+  _fbAuth.signInWithRedirect(provider).catch(e => {
     errEl.textContent = 'Erro ao entrar: ' + e.message;
     errEl.style.display='block';
   });
