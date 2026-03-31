@@ -514,6 +514,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 // ======================================================================
 let _fbApp = null, _fbAuth = null, _fbStore = null, _fbUser = null;
 let _fbSyncTimer = null;
+let _fbLoadInProgress = false;   // evita carregamentos concorrentes
 
 // Configuração Firebase embutida — não precisa de setup manual
 const _FB_CONFIG = {
@@ -594,7 +595,13 @@ function fbStartAuth() {
       if (hdrName) hdrName.textContent = user.displayName || user.email;
       _setSyncStatus('syncing');
       fbLoadFromCloud().then(() => {
-        applyCustomNames(); renderHome(); renderBreadcrumb();
+        applyCustomNames();
+        // Garante que a view home está ativa independentemente de qual
+        // view estava selecionada antes do logout
+        state.unitId = null;
+        state.patientId = null;
+        setView('home');
+        renderHome();
       });
     } else {
       _fbUser = null;
@@ -654,6 +661,7 @@ function fbSignOut() {
   try { localStorage.removeItem('clinboard_db'); } catch {}
   try { localStorage.removeItem('clinboard_custom_names'); } catch {}
   renderHome();
+  _fbLoadInProgress = false; // reseta lock para o próximo login
   // signOut em si não precisa de callback — onAuthStateChanged cuida do resto
   _fbAuth.signOut().catch(e => console.warn('[Auth] signOut erro:', e.message));
 }
@@ -694,11 +702,21 @@ async function fbLoadFromCloud() {
     console.warn('[Sync] fbLoadFromCloud abortado: store=' + !!_fbStore + ' user=' + !!_fbUser);
     return;
   }
+  if (_fbLoadInProgress) {
+    console.log('[Sync] fbLoadFromCloud: carregamento já em andamento — ignorando chamada duplicada');
+    // Aguarda o carregamento em andamento antes de retornar
+    await new Promise(r => {
+      const poll = setInterval(() => { if (!_fbLoadInProgress) { clearInterval(poll); r(); } }, 200);
+    });
+    return;
+  }
+  _fbLoadInProgress = true;
   fbShowLoading('Carregando dados...');
   try {
     await _fbLoadWithRetry(0);
   } finally {
     fbHideLoading();
+    _fbLoadInProgress = false;
   }
 }
 
@@ -757,21 +775,28 @@ async function _fbLoadWithRetry(_retry) {
     console.log('[Sync] concluído — unidades:', db.units?.length);
 
   } catch(e) {
-    const offline = e?.code === 'unavailable' || (e?.message || '').toLowerCase().includes('offline');
-    console.warn(`[Sync] erro (code=${e?.code}):`, e?.message || e);
-    if (offline && _retry < 4) {
-      const delay = (_retry + 1) * 2000;
+    const code = e?.code || '';
+    const msg_ = (e?.message || '').toLowerCase();
+    const offline   = code === 'unavailable' || msg_.includes('offline');
+    // permission-denied / unauthenticated logo após login = token ainda não propagou
+    // ao Firestore SDK — é transitório, deve ser retentado
+    const authDelay = code === 'permission-denied' || code === 'unauthenticated';
+    console.warn(`[Sync] erro (code=${code}, retry=${_retry}):`, e?.message || e);
+    if ((offline || authDelay) && _retry < 4) {
+      const delay = authDelay ? 1500 : (_retry + 1) * 2000;
       fbShowLoading(`Conectando... tentativa ${_retry + 2}/5`);
-      console.log(`[Sync] aguardando ${delay}ms antes de nova tentativa`);
+      console.log(`[Sync] aguardando ${delay}ms antes de nova tentativa (${authDelay ? 'auth' : 'offline'})`);
       await new Promise(r => setTimeout(r, delay));
       return _fbLoadWithRetry(_retry + 1);
     }
     _setSyncStatus('err');
-    const msg = e?.code === 'permission-denied'
+    const msg = code === 'permission-denied'
       ? 'Permissão negada — verifique as Regras de Segurança no console Firebase'
-      : `Erro ao sincronizar (${e?.code || e?.message || e}) — usando dados locais`;
+      : `Erro ao sincronizar (${code || e?.message || e}) — usando dados locais`;
     toast(msg, 'warn');
-    loadDB();
+    // Só substitui db se houver dados no localStorage; senão mantém o que está em memória
+    const localRaw = (() => { try { return localStorage.getItem('clinboard_db'); } catch { return null; } })();
+    if (localRaw) { loadDB(); } else if (!db.units) { db = { units: [] }; }
   }
 }
 
