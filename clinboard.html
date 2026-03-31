@@ -1577,7 +1577,7 @@ const NAME_MAP = {
   'HEMACIAS':'Hemácias','HEMÁCIAS':'Hemácias','HEMACIA':'Hemácias',
   'LEUCOCITOS':'Leucócitos','LEUCÓCITOS':'Leucócitos',
   'PLAQUETAS':'Plaquetas','VCM':'VCM','HCM':'HCM','CHCM':'CHCM','RDW':'RDW',
-  'VMP':'VMP','VPM':'VPM','MPV':'VMP','PDW':'PDW','PCT':'PCT',
+  'VPM':'VPM','VMP':'VPM','MPV':'VPM','PDW':'PDW','PCT':'PCT',
   'BASTONETES':'Bastonetes','SEGMENTADOS':'Segmentados',
   'LINFOCITOS':'Linfócitos','LINFÓCITOS':'Linfócitos',
   'MONOCITOS':'Monócitos','MONÓCITOS':'Monócitos',
@@ -1601,7 +1601,8 @@ const NAME_MAP = {
   'PROTEINA C REATIVA ULTRASSENSIVEL':'PCR','PROTEÍNA C REATIVA ULTRASSENSÍVEL':'PCR',
   'TGO':'TGO (AST)','TGP':'TGP (ALT)','AST':'TGO (AST)','ALT':'TGP (ALT)',
   'TGO (AST)':'TGO (AST)','TGP (ALT)':'TGP (ALT)',
-  'ATIVIDADE':'TP - Atividade','RNI':'INR','INR':'INR',
+  'ATIVIDADE DA PROTROMBINA':'TP - Atividade','ATIVIDADE (%)':'TP - Atividade',
+  'TAP (%)':'TP - Atividade','RNI':'INR','INR':'INR',
   'TEMPO DE PROTROMBINA':'TP (segundos)','TP':'TP - Atividade',
   'TEMPO DE TROMBOPLASTINA PARCIAL ATIVADO':'TTPA','TTPA':'TTPA',
   'TEMPO DE TROMBOPLASTINA PARCIAL':'TTPA',
@@ -1610,7 +1611,8 @@ const NAME_MAP = {
   'SATURAÇÃO DE O2':'SatO2','SATURACAO O2':'SatO2','SATURAÇÃO O2':'SatO2',
   'LACTATO':'Lactato','LACTATO ARTERIAL':'Lactato',
   'GLICOSE':'Glicose','GLICEMIA':'Glicose','GLUCOSE':'Glicose','GLI':'Glicose',
-  'HEMOGLOBINA GLICADA':'HbA1c',
+  'HEMOGLOBINA GLICADA':'HbA1c','GLICOHEMOGLOBINA':'HbA1c','HBA1C':'HbA1c',
+  'A1C':'HbA1c','HEMOGLOBINA A1C':'HbA1c','HB GLICADA':'HbA1c',
   'TROPONINA':'Troponina','CPK':'CPK','CK':'CPK','CREATINOFOSFOQUINASE':'CPK',
   'BNP':'BNP','PROCALCITONINA':'Procalcitonina',
   'FIBRINOGENIO':'Fibrinogênio','FIBRINOGÊNIO':'Fibrinogênio',
@@ -1667,6 +1669,9 @@ const NAME_MAP = {
   // Troponina
   'TROPONINA QUANTITATIVA':'Troponina','TROPONINA I':'Troponina','TROPONINA T':'Troponina',
   'TROPONINA I QUANTITATIVA':'Troponina','TROPONINA T QUANTITATIVA':'Troponina',
+  'TROPONINA I ULTRASSENSIVEL':'Troponina','TROPONINA I ULTRASSENSÍVEL':'Troponina',
+  'TROPONINA T ULTRASSENSIVEL':'Troponina','TROPONINA T ULTRASSENSÍVEL':'Troponina',
+  'TROPONINA DE ALTA SENSIBILIDADE':'Troponina','TROPONINA HS':'Troponina',
   // Lactato
   'LACTATO VENOSO':'Lactato',
   // Urina
@@ -1695,17 +1700,42 @@ const NAME_MAP = {
   'HB':'Hemoglobina','HBG':'Hemoglobina',
   'HT':'Hematócrito','HTC':'Hematócrito',
   'PLT':'Plaquetas',
-  // Pio X hemograma — nomes completos com abreviações por pontos
-  'HEMOGLOBINAS':'Hemoglobina','HEMATOCRITO':'Hematócrito',
-  'VCM':'VCM','HCM':'HCM','CHCM':'CHCM','RDW':'RDW',
-  'PDW':'PDW','PCT':'PCT','VPM':'VPM',
-  'METAMIELOCITOS':'Metamielócitos','METAMIELÓCITOS':'Metamielócitos',
-  'NEUTR.TOTAIS':'Neutrófilos','NEUTROFILOS TOTAIS':'Neutrófilos',
-  'NEUTRÓFILOS TOTAIS':'Neutrófilos',
+  // Abreviações com ponto e variantes ortográficas (Pio X e similares) — sem duplicatas
+  'NEUTR.TOTAIS':'Neutrófilos','NEUTRÓFILOS TOTAIS':'Neutrófilos',
   'LINF.ATIPICOS':'Linfócitos Atípicos','LINF.ATÍPICOS':'Linfócitos Atípicos',
+  'LINFOCITOS ATIPICOS':'Linfócitos Atípicos','LINFÓCITOS ATÍPICOS':'Linfócitos Atípicos',
   'PLASMOCITOS':'Plasmócitos','PLASMÓCITOS':'Plasmócitos',
-  // Pio X bioquímica
-  // Pio X EAS 3-colunas (parâmetros em maiúsculas)
+  // Reticulócitos
+  'RETICULOCITOS':'Reticulócitos','RETICULÓCITOS':'Reticulócitos','RETIC':'Reticulócitos',
+  // Hemossedimentação
+  'VHS':'VHS','VSG':'VHS',
+  'VELOCIDADE DE HEMOSSEDIMENTACAO':'VHS','VELOCIDADE DE HEMOSSEDIMENTAÇÃO':'VHS',
+  // Ácido fólico / Vitaminas
+  'ACIDO FOLICO':'Ácido Fólico','ÁCIDO FÓLICO':'Ácido Fólico','FOLATO':'Ácido Fólico',
+  'VITAMINA B1':'Vitamina B1','TIAMINA':'Vitamina B1',
+  'VITAMINA B6':'Vitamina B6','PIRIDOXINA':'Vitamina B6',
+  'HAPTOGLOBINA':'Haptoglobina',
+  // NT-proBNP
+  'NT-PROBNP':'NT-proBNP','NT PRO BNP':'NT-proBNP','NT-PRO-BNP':'NT-proBNP',
+  'PRO-BNP':'NT-proBNP','PROBNP':'NT-proBNP','NT PROBNP':'NT-proBNP',
+  // Hormônios reprodutivos
+  'FSH':'FSH','LH':'LH','ESTRADIOL':'Estradiol','ESTRIOL':'Estriol',
+  'TESTOSTERONA':'Testosterona','PROGESTERONA':'Progesterona',
+  'BETA-HCG':'β-hCG','BHCG':'β-hCG','B-HCG':'β-hCG','HCG':'β-hCG',
+  'GONADOTROFINA CORIONICA':'β-hCG','GONADOTROFINA CORIÔNICA':'β-hCG',
+  'AMH':'AMH','HORMONIO ANTIMULLERIANO':'AMH','HORMÔNIO ANTIMÜLLERIANO':'AMH',
+  'DEHEA':'DHEA-S','DHEAS':'DHEA-S','DHEA-S':'DHEA-S',
+  // Imunologia
+  'FAN':'FAN','ANA':'FAN','FATOR ANTINUCLEAR':'FAN',
+  'ANTI-DNA':'Anti-DNA','ANTICORPO ANTI-DNA':'Anti-DNA',
+  'ANCA':'ANCA','PR3':'ANCA PR3','MPO':'ANCA MPO',
+  'ASLO':'ASLO','ANTIESTREPTOLISINA':'ASLO','ANTIESTREPTOLISINA O':'ASLO',
+  'IGA':'IgA','IGG':'IgG','IGM':'IgM',
+  'IMUNOGLOBULINA A':'IgA','IMUNOGLOBULINA G':'IgG','IMUNOGLOBULINA M':'IgM',
+  // Função renal / TFG
+  'TFG':'TFG','TAXA DE FILTRACAO GLOMERULAR':'TFG','TAXA DE FILTRAÇÃO GLOMERULAR':'TFG',
+  'CLEARANCE DE CREATININA':'TFG','RFG':'TFG','RITMO DE FILTRAÇÃO GLOMERULAR':'TFG',
+  // EAS 3-colunas (parâmetros em maiúsculas)
   'PROTEÍNA (ALBUMINA)':'Proteínas (U)','PROTEINA (ALBUMINA)':'Proteínas (U)',
   'CETONA':'Cetonas','BILIRRUBINA':'Bilirrubina (U)',
   'UROBILINOGÊNIO':'Urobilinogênio','UROBILINOGENIO':'Urobilinogênio',
@@ -1723,15 +1753,16 @@ const PARAM_WHITELIST = new Set([
   // Culturas (valores de CULTURE_TYPES são adicionados depois que o objeto é definido)
 ]);
 
+// Normaliza nome de exame para o canônico. Retorna null se desconhecido.
 function normName(raw) {
   const u = raw.trim().toUpperCase().replace(/\s+/g,' ');
-  if (NAME_MAP[u]) return NAME_MAP[u];
-  // partial match
-  for (const [k,v] of Object.entries(NAME_MAP)) {
-    if (u === k) return v;
-  }
-  // Title case fallback
-  return raw.trim().replace(/\w\S*/g, t => t.charAt(0).toUpperCase()+t.slice(1).toLowerCase());
+  return NAME_MAP[u] || null;
+}
+
+// Versão com fallback em title-case para exibição quando o nome é inserido manualmente
+function normNameDisplay(raw) {
+  return normName(raw) ||
+    raw.trim().replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
 }
 
 // Lines to skip
@@ -1775,7 +1806,7 @@ function parseParamRow(line) {
       const refMin = m[3] ? pNum(m[3]) : null;
       const refMax = m[4] ? pNum(m[4]) : null;
       if (val !== null) {
-        return {name:normName(name), value:val, valueStr:m[2], unit:'/mm³', refMin, refMax};
+        return {name:normNameDisplay(name), value:val, valueStr:m[2], unit:'/mm³', refMin, refMax};
       }
     }
   }
@@ -1794,7 +1825,7 @@ function parseParamRow(line) {
     const unit = (m[3]||'').trim();
     const {refMin,refMax} = {refMin:pNum(m[4]),refMax:pNum(m[5])};
     if (val===null) return null;
-    return {name:normName(name),value:val,valueStr:m[2],unit,refMin,refMax};
+    return {name:normNameDisplay(name),value:val,valueStr:m[2],unit,refMin,refMax};
   }
 
   // ─── Pattern with < upper-bound ref ──────────────────────────────────────
@@ -1809,7 +1840,7 @@ function parseParamRow(line) {
       const unit = (m[3]||'').trim();
       const refMax = pNum(m[4]);
       if (val !== null) {
-        return {name:normName(name), value:val, valueStr:m[2], unit, refMin:0, refMax};
+        return {name:normNameDisplay(name), value:val, valueStr:m[2], unit, refMin:0, refMax};
       }
     }
   }
@@ -1825,7 +1856,7 @@ function parseParamRow(line) {
     const val = pNum(m[2]);
     if (val===null) return null;
     const unit = (m[3]||'').trim();
-    return {name:normName(name),value:val,valueStr:m[2],unit,refMin:null,refMax:null};
+    return {name:normNameDisplay(name),value:val,valueStr:m[2],unit,refMin:null,refMax:null};
   }
 
   return null;
@@ -2023,7 +2054,7 @@ function parsePDFText(text, format) {
           if (inM2) ref = inM2[1];
         }
         const {refMin,refMax} = parseRef(ref);
-        const name = normName(currentExamName);
+        const name = normNameDisplay(currentExamName);
         if (!SKIP_NAMES.has(name.toUpperCase())) {
           results.push({name,value:val,valueStr:resMatch[1],unit,refMin,refMax,date,status:getStatus(val,refMin,refMax)});
         }
@@ -2036,7 +2067,7 @@ function parsePDFText(text, format) {
     if (format === 'CITOMED' || format === 'GENERIC') {
       const cm = line.match(/^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç\s\(\)\/]+?)\s*:\s*([−\-]?[0-9][0-9.,]*)\s+([a-zA-Zµ%\/~³^·]+)?$/);
       if (cm && cm[1].length>2 && cm[1].length<50 && !skipLine(line)) {
-        const name = normName(cm[1]);
+        const name = normNameDisplay(cm[1]);
         const val = pNum(cm[2]);
         const unit = (cm[3]||'').trim();
         if (val!==null && !SKIP_NAMES.has(name.toUpperCase())) {
@@ -2497,7 +2528,7 @@ function addManual() {
   if (!name || !val) { toast('Nome e valor são obrigatórios','err'); return; }
   const vNum = pNum(val);
   const {refMin,refMax}=parseRef(ref);
-  const newR = {name:normName(name),value:vNum??val,valueStr:val,unit,refMin,refMax,date:'',included:true,status:getStatus(vNum,refMin,refMax)};
+  const newR = {name:normNameDisplay(name),value:vNum??val,valueStr:val,unit,refMin,refMax,date:'',included:true,status:getStatus(vNum,refMin,refMax)};
   extractedResults.push(newR);
   // Add to DOM
   const list = document.getElementById('ext-list');
