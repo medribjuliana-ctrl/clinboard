@@ -553,12 +553,17 @@ const _pendingDeletes = new Set();
 function fbShowLogin()    { document.getElementById('fb-login-overlay').style.display='flex'; }
 function fbHideLogin()    { document.getElementById('fb-login-overlay').style.display='none'; }
 function fbShowLoading(msg) {
+  console.log('[UI] fbShowLoading:', msg || 'Carregando dados...');
   const el = document.getElementById('fb-loading-overlay');
   const msgEl = document.getElementById('fb-loading-msg');
   if (msgEl) msgEl.textContent = msg || 'Carregando dados...';
   if (el) el.style.display='flex';
 }
-function fbHideLoading()  { const el = document.getElementById('fb-loading-overlay'); if (el) el.style.display='none'; }
+function fbHideLoading() {
+  console.log('[UI] fbHideLoading');
+  const el = document.getElementById('fb-loading-overlay');
+  if (el) el.style.display='none';
+}
 
 function _setSyncStatus(status) {
   const el = document.getElementById('sync-indicator');
@@ -598,6 +603,13 @@ function fbStartAuth() {
         applyCustomNames();
         // Garante que a view home está ativa independentemente de qual
         // view estava selecionada antes do logout
+        state.unitId = null;
+        state.patientId = null;
+        setView('home');
+        renderHome();
+      }).catch(e => {
+        // Se qualquer erro ocorrer no .then(), renderHome ainda deve rodar
+        console.error('[Auth] erro no pós-carregamento:', e);
         state.unitId = null;
         state.patientId = null;
         setView('home');
@@ -821,7 +833,16 @@ async function _fbLoadWithRetry(_retry) {
 
 // ── Firestore: salvar ─────────────────────────────────────────────────
 async function fbPushToCloud() {
-  if (!_fbStore || !_fbUser) return;
+  if (!_fbStore || !_fbUser) {
+    console.warn('[Sync] fbPushToCloud ignorado: _fbUser=' + !!_fbUser);
+    return;
+  }
+  console.log('[Sync] fbPushToCloud — db.units:', db.units?.length,
+    db.units?.map(u => u.name));
+  if (!db.units || db.units.length === 0) {
+    console.warn('[Sync] ⚠️ fbPushToCloud chamado com db VAZIO — stack:',
+      new Error().stack.split('\n').slice(1,4).join(' ← '));
+  }
   _setSyncStatus('syncing');
   try {
     const { meta, units } = _fbRefs();
@@ -901,8 +922,11 @@ function loadDB() {
 // CUSTOM NAME MAPPINGS (persisted in localStorage)
 // ======================================================================
 function loadCustomNames() {
-  try { const r = localStorage.getItem('clinboard_custom_names'); return r ? JSON.parse(r) : {newParams:[],synonyms:{}}; }
-  catch { return {newParams:[],synonyms:{}}; }
+  try {
+    const r = localStorage.getItem('clinboard_custom_names');
+    const parsed = r ? JSON.parse(r) : {};
+    return { newParams: parsed.newParams || [], synonyms: parsed.synonyms || {} };
+  } catch { return { newParams: [], synonyms: {} }; }
 }
 function saveCustomNames(cn) {
   try { localStorage.setItem('clinboard_custom_names', JSON.stringify(cn)); } catch(e) {}
@@ -910,8 +934,10 @@ function saveCustomNames(cn) {
 }
 function applyCustomNames() {
   const cn = loadCustomNames();
-  cn.newParams.forEach(n => PARAM_WHITELIST.add(n));
-  Object.entries(cn.synonyms).forEach(([k,v]) => { NAME_MAP[k]=v; PARAM_WHITELIST.add(v); });
+  if (Array.isArray(cn.newParams)) cn.newParams.forEach(n => PARAM_WHITELIST.add(n));
+  if (cn.synonyms && typeof cn.synonyms === 'object') {
+    Object.entries(cn.synonyms).forEach(([k,v]) => { NAME_MAP[k]=v; PARAM_WHITELIST.add(v); });
+  }
 }
 
 function getUnit(id) { return db.units.find(u => u.id === id); }
@@ -966,7 +992,11 @@ function renderBreadcrumb() {
 // RENDER HOME
 // ======================================================================
 function renderHome() {
+  console.log('[UI] renderHome — db.units:', db.units?.length,
+    db.units?.map(u => u.name), '| view:', state.view,
+    '| stack:', new Error().stack.split('\n').slice(1,4).join(' ← '));
   const grid = document.getElementById('units-grid');
+  if (!grid) { console.error('[UI] renderHome: #units-grid NÃO ENCONTRADO no DOM!'); return; }
   let html = '';
   db.units.forEach(u => {
     const active = u.patients.filter(p => p.status==='ativo').length;
