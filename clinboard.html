@@ -515,18 +515,19 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 let _fbApp = null, _fbAuth = null, _fbStore = null, _fbUser = null;
 let _fbSyncTimer = null;
 let _fbLoadInProgress = false;   // evita carregamentos concorrentes
+let _fbLoadWaiters = [];         // fila de resolvers aguardando o load terminar
 
 // Configuração Firebase embutida — não precisa de setup manual
-const _FB_CONFIG = {
+const _FB_CONFIG = Object.freeze({
   apiKey: "AIzaSyCcGq3BqJFrlADeEAdc7vHq7bzUJwmOFww",
   authDomain: "clinboard-34c13.firebaseapp.com",
   projectId: "clinboard-34c13",
   storageBucket: "clinboard-34c13.firebasestorage.app",
   messagingSenderId: "370913383327",
   appId: "1:370913383327:web:5bebe09873fc4238e923aa"
-};
+});
 
-function fbGetConfig() { return _FB_CONFIG; }
+function fbGetConfig() { return { ..._FB_CONFIG }; }
 
 function fbInit(cfg) {
   try {
@@ -553,14 +554,12 @@ const _pendingDeletes = new Set();
 function fbShowLogin()    { document.getElementById('fb-login-overlay').style.display='flex'; }
 function fbHideLogin()    { document.getElementById('fb-login-overlay').style.display='none'; }
 function fbShowLoading(msg) {
-  console.log('[UI] fbShowLoading:', msg || 'Carregando dados...');
   const el = document.getElementById('fb-loading-overlay');
   const msgEl = document.getElementById('fb-loading-msg');
   if (msgEl) msgEl.textContent = msg || 'Carregando dados...';
   if (el) el.style.display='flex';
 }
 function fbHideLoading() {
-  console.log('[UI] fbHideLoading');
   const el = document.getElementById('fb-loading-overlay');
   if (el) el.style.display='none';
 }
@@ -689,6 +688,8 @@ function fbSignOut() {
 
   // ── 4. Reseta flags ───────────────────────────────────────────────────
   _fbLoadInProgress = false;
+  _fbLoadWaiters.forEach(r => r());
+  _fbLoadWaiters = [];
 
   // ── 5. Sign out no Firebase ───────────────────────────────────────────
   // onAuthStateChanged(null) vai disparar depois — só precisa mostrar o login
@@ -710,7 +711,7 @@ function _ensureDbStructure() {
 }
 
 function _getCustomNames() {
-  try { return JSON.parse(localStorage.getItem('clinboard_custom_names') || '{}'); } catch { return {}; }
+  return loadCustomNames();
 }
 
 // ── Firestore: referências de caminho ────────────────────────────────
@@ -718,6 +719,7 @@ function _getCustomNames() {
 //   users/{uid}/data/meta        → metadados + customNames
 //   users/{uid}/units/{unitId}   → cada unidade com seus pacientes e exames
 function _fbRefs() {
+  if (!_fbUser || !_fbUser.uid) throw new Error('_fbRefs chamado sem usuário autenticado');
   const userDoc = _fbStore.collection('users').doc(_fbUser.uid);
   return {
     meta:  userDoc.collection('data').doc('meta'),  // DocumentReference
@@ -733,11 +735,8 @@ async function fbLoadFromCloud() {
     return;
   }
   if (_fbLoadInProgress) {
-    console.log('[Sync] fbLoadFromCloud: carregamento já em andamento — ignorando chamada duplicada');
-    // Aguarda o carregamento em andamento antes de retornar
-    await new Promise(r => {
-      const poll = setInterval(() => { if (!_fbLoadInProgress) { clearInterval(poll); r(); } }, 200);
-    });
+    console.log('[Sync] fbLoadFromCloud: carregamento já em andamento — aguardando');
+    await new Promise(r => _fbLoadWaiters.push(r));
     return;
   }
   _fbLoadInProgress = true;
@@ -747,6 +746,9 @@ async function fbLoadFromCloud() {
   } finally {
     fbHideLoading();
     _fbLoadInProgress = false;
+    // Libera todos que estavam esperando
+    _fbLoadWaiters.forEach(r => r());
+    _fbLoadWaiters = [];
   }
 }
 
@@ -802,8 +804,7 @@ async function _fbLoadWithRetry(_retry) {
 
     try { localStorage.setItem('clinboard_db', JSON.stringify(db)); } catch {}
     _setSyncStatus('ok');
-    console.log('[Sync] ✅ concluído — unidades carregadas:', db.units?.length,
-      db.units?.map(u => u.name));
+    console.log('[Sync] concluído — unidades:', db.units?.length);
 
   } catch(e) {
     const code = e?.code || '';
@@ -833,16 +834,7 @@ async function _fbLoadWithRetry(_retry) {
 
 // ── Firestore: salvar ─────────────────────────────────────────────────
 async function fbPushToCloud() {
-  if (!_fbStore || !_fbUser) {
-    console.warn('[Sync] fbPushToCloud ignorado: _fbUser=' + !!_fbUser);
-    return;
-  }
-  console.log('[Sync] fbPushToCloud — db.units:', db.units?.length,
-    db.units?.map(u => u.name));
-  if (!db.units || db.units.length === 0) {
-    console.warn('[Sync] ⚠️ fbPushToCloud chamado com db VAZIO — stack:',
-      new Error().stack.split('\n').slice(1,4).join(' ← '));
-  }
+  if (!_fbStore || !_fbUser) return;
   _setSyncStatus('syncing');
   try {
     const { meta, units } = _fbRefs();
@@ -879,6 +871,7 @@ async function fbPushToCloud() {
 }
 
 function fbScheduleSync() {
+  if (!_fbUser || !db.units) return;
   // Debounce: salva no Firestore 1.5s após a última alteração
   _setSyncStatus('syncing');
   clearTimeout(_fbSyncTimer);
@@ -992,11 +985,8 @@ function renderBreadcrumb() {
 // RENDER HOME
 // ======================================================================
 function renderHome() {
-  console.log('[UI] renderHome — db.units:', db.units?.length,
-    db.units?.map(u => u.name), '| view:', state.view,
-    '| stack:', new Error().stack.split('\n').slice(1,4).join(' ← '));
   const grid = document.getElementById('units-grid');
-  if (!grid) { console.error('[UI] renderHome: #units-grid NÃO ENCONTRADO no DOM!'); return; }
+  if (!grid) return;
   let html = '';
   db.units.forEach(u => {
     const active = u.patients.filter(p => p.status==='ativo').length;
@@ -1143,13 +1133,14 @@ function renderLabPanel() {
 
   // Group params by logical category
   const GROUPS = {
-    'Hemograma': ['Hemácias','Hemoglobina','Hematócrito','VCM','HCM','CHCM','RDW','Eritroblastos','Leucócitos','Neutrófilos','Bastonetes','Segmentados','Eosinófilos','Basófilos','Linfócitos','Monócitos','Mielócitos','Metamielócitos','Linfócitos Atípicos','Plasmócitos','Plaquetas','VMP','VPM','PDW','PCT'],
-    'Gasometria': ['pH','pCO2','pO2','HCO3','BE','SatO2','Lactato','Glicose'],
+    'Hemograma': ['Hemácias','Hemoglobina','Hematócrito','VCM','HCM','CHCM','RDW','Eritroblastos','Leucócitos','Blastos','Promielócitos','Mielócitos','Metamielócitos','Bastonetes','Segmentados','Neutrófilos','Eosinófilos','Basófilos','Linfócitos','Linfócitos Atípicos','Monócitos','Plasmócitos','Plaquetas','VPM','PDW','PCT'],
+    'Gasometria': ['pH','pCO2','pO2','HCO3','BE','SatO2','TCO2','Lactato','Glicose','FiO2','Temperatura'],
     'Bioquímica': ['Ureia','Creatinina','TGO (AST)','TGP (ALT)','PCR','Cálcio Total','Bilirrubina Total','Bilirrubina Direta','Bilirrubina Indireta','Albumina','Proteínas Totais','Fosfatase Alcalina','GGT'],
     'Eletrólitos': ['Sódio','Potássio','Cálcio Iônico','Magnésio','Fósforo','Cloro'],
     'Inflamatório': ['PCR','Procalcitonina','Ferritina','Fibrinogênio','Dímero-D'],
     'Coagulação': ['TP - Atividade','INR','TTPA'],
     'Cardíaco': ['CPK','Troponina','BNP'],
+    'Líquor': ['Células (LCR)','Células Nucleadas (LCR)','Hemácias (LCR)','Leucócitos (LCR)','Neutrófilos (LCR)','Linfócitos (LCR)','Monócitos (LCR)','Eosinófilos (LCR)','Basófilos (LCR)','Plasmócitos (LCR)','Macrófagos (LCR)','Proteínas (LCR)','Glicose (LCR)','Lactato (LCR)','Cloretos (LCR)','pH (LCR)','VDRL (LCR)'],
     'Urinálise': ['Cor (U)','Aspecto (U)','Depósito','Densidade','pH (U)','Proteínas (U)','Glicose (U)','Cetonas','Bilirrubina (U)','Nitrito','Urobilinogênio','Hemoglobina (U)','Est. Leucocitária','Leucócitos (U)','Hemácias (U)','Cél. Epiteliais','Cél. Escamosas','Cél. Não Escamosas','Cél. Transicionais','Cél. Tubulares','Cilindros','Cilindros Hialinos','Cilindros Patol.','Flora Bacteriana','Leveduras','Cristais','Filamentos de Muco','Espermatozoides'],
     'Culturas': ['Hemocultura','Urocultura','Aspirado Traqueal','Secreção Traqueal','Lavado Broncoalveolar','Escarro','Líquor','Líquido Pleural','Líquido Ascítico','Líquido Sinovial','Líquido','Secreção','Fragmento','Swab','Swab Retal','Swab Nasal','Ponta de Cateter','Coprocultura','Cultura de Fezes'],
     'Outros': [],
@@ -1230,15 +1221,16 @@ function downloadLabPDF() {
   });
 
   // Group params (same categories as renderLabPanel)
-  const GORDER = ['Hemograma','Gasometria','Bioquímica','Eletrólitos','Inflamatório','Coagulação','Cardíaco','Urinálise','Culturas','Outros'];
+  const GORDER = ['Hemograma','Gasometria','Bioquímica','Eletrólitos','Inflamatório','Coagulação','Cardíaco','Líquor','Urinálise','Culturas','Outros'];
   const GMAP = {
-    'Hemograma':['Hemácias','Hemoglobina','Hematócrito','VCM','HCM','CHCM','RDW','Eritroblastos','Leucócitos','Neutrófilos','Bastonetes','Segmentados','Eosinófilos','Basófilos','Linfócitos','Monócitos','Mielócitos','Metamielócitos','Linfócitos Atípicos','Plasmócitos','Plaquetas','VMP','VPM','PDW','PCT'],
-    'Gasometria':['pH','pCO2','pO2','HCO3','BE','SatO2','Lactato','Glicose'],
+    'Hemograma':['Hemácias','Hemoglobina','Hematócrito','VCM','HCM','CHCM','RDW','Eritroblastos','Leucócitos','Blastos','Promielócitos','Mielócitos','Metamielócitos','Bastonetes','Segmentados','Neutrófilos','Eosinófilos','Basófilos','Linfócitos','Linfócitos Atípicos','Monócitos','Plasmócitos','Plaquetas','VPM','PDW','PCT'],
+    'Gasometria':['pH','pCO2','pO2','HCO3','BE','SatO2','TCO2','Lactato','Glicose','FiO2','Temperatura'],
     'Bioquímica':['Ureia','Creatinina','TGO (AST)','TGP (ALT)','PCR','Cálcio Total','Bilirrubina Total','Bilirrubina Direta','Bilirrubina Indireta','Albumina','Proteínas Totais','Fosfatase Alcalina','GGT'],
     'Eletrólitos':['Sódio','Potássio','Cálcio Iônico','Magnésio','Fósforo','Cloro'],
     'Inflamatório':['PCR','Procalcitonina','Ferritina','Fibrinogênio','Dímero-D'],
     'Coagulação':['TP - Atividade','INR','TTPA'],
     'Cardíaco':['CPK','Troponina','BNP'],
+    'Líquor':['Células (LCR)','Células Nucleadas (LCR)','Hemácias (LCR)','Leucócitos (LCR)','Neutrófilos (LCR)','Linfócitos (LCR)','Monócitos (LCR)','Eosinófilos (LCR)','Basófilos (LCR)','Plasmócitos (LCR)','Macrófagos (LCR)','Proteínas (LCR)','Glicose (LCR)','Lactato (LCR)','Cloretos (LCR)','pH (LCR)','VDRL (LCR)'],
     'Urinálise':['Cor (U)','Aspecto (U)','Depósito','Densidade','pH (U)','Proteínas (U)','Glicose (U)','Cetonas','Bilirrubina (U)','Nitrito','Urobilinogênio','Hemoglobina (U)','Est. Leucocitária','Leucócitos (U)','Hemácias (U)','Cél. Epiteliais','Cél. Escamosas','Cél. Não Escamosas','Cél. Transicionais','Cél. Tubulares','Cilindros','Cilindros Hialinos','Cilindros Patol.','Flora Bacteriana','Leveduras','Cristais','Filamentos de Muco','Espermatozoides'],
     'Culturas':['Hemocultura','Urocultura','Aspirado Traqueal','Secreção Traqueal','Lavado Broncoalveolar','Escarro','Líquor','Líquido Pleural','Líquido Ascítico','Líquido Sinovial','Líquido','Secreção','Fragmento','Swab','Swab Retal','Swab Nasal','Ponta de Cateter','Coprocultura','Cultura de Fezes'],
     'Outros':[],
@@ -1662,6 +1654,10 @@ const NAME_MAP = {
   'HEMACIAS':'Hemácias','HEMÁCIAS':'Hemácias','HEMACIA':'Hemácias',
   'LEUCOCITOS':'Leucócitos','LEUCÓCITOS':'Leucócitos',
   'PLAQUETAS':'Plaquetas','VCM':'VCM','HCM':'HCM','CHCM':'CHCM','RDW':'RDW',
+  // Abreviações com pontos (HOC/Citomed) — pré-processadas para remover pontos
+  // V.C.M.→VCM, H.C.M.→HCM etc. já cobertos acima; manter fallbacks explícitos
+  'V.C.M.':'VCM','V.C.M':'VCM','H.C.M.':'HCM','H.C.M':'HCM',
+  'C.H.C.M.':'CHCM','C.H.C.M':'CHCM','R.D.W.':'RDW','R.D.W':'RDW',
   'VPM':'VPM','VMP':'VPM','MPV':'VPM','PDW':'PDW','PCT':'PCT',
   'BASTONETES':'Bastonetes','SEGMENTADOS':'Segmentados',
   'LINFOCITOS':'Linfócitos','LINFÓCITOS':'Linfócitos',
@@ -1669,7 +1665,10 @@ const NAME_MAP = {
   'EOSINOFILOS':'Eosinófilos','EOSINÓFILOS':'Eosinófilos',
   'BASOFILOS':'Basófilos','BASÓFILOS':'Basófilos',
   'NEUTROFILOS TOTAIS':'Neutrófilos','NEUTRÓFILOS':'Neutrófilos',
-  'NEUTROFILOS':'Neutrófilos','METAMIELOCITOS':'Metamielócitos','METAMIELÓCITOS':'Metamielócitos',
+  'NEUTROFILOS':'Neutrófilos',
+  'BLASTOS':'Blastos','BLASTO':'Blastos',
+  'PROMIELOCITOS':'Promielócitos','PROMIELÓCITOS':'Promielócitos',
+  'METAMIELOCITOS':'Metamielócitos','METAMIELÓCITOS':'Metamielócitos',
   'MIELOCITOS':'Mielócitos','MIELÓCITOS':'Mielócitos',
   'CREATININA':'Creatinina','UREIA':'Ureia','URÉIA':'Ureia','UREA':'Ureia',
   'SODIO':'Sódio','SÓDIO':'Sódio',
@@ -1694,6 +1693,15 @@ const NAME_MAP = {
   'PH':'pH','PCO2':'pCO2','PO2':'pO2','TCO2':'TCO2','HCO3':'HCO3',
   'BE':'BE','SO2':'SatO2','O2SAT':'SatO2','SATURACAO DE O2':'SatO2',
   'SATURAÇÃO DE O2':'SatO2','SATURACAO O2':'SatO2','SATURAÇÃO O2':'SatO2',
+  'SAT O2':'SatO2','SATO2':'SatO2','SAT.O2':'SatO2','SAT. O2':'SatO2',
+  'CO2 TOTAL':'TCO2','CO2 TOTAL.':'TCO2',
+  'FIO2':'FiO2','FIO 2':'FiO2',
+  'TEMPERATURA':'Temperatura','TEMP':'Temperatura',
+  // Abreviações de gasometria (Biocentro/IMEC e Citomed/HOC)
+  'NA':'Sódio','NA+':'Sódio',
+  'K':'Potássio','K+':'Potássio',
+  'CA++':'Cálcio Iônico','CA+':'Cálcio Iônico','CAI':'Cálcio Iônico',
+  'LAC':'Lactato',
   'LACTATO':'Lactato','LACTATO ARTERIAL':'Lactato',
   'GLICOSE':'Glicose','GLICEMIA':'Glicose','GLUCOSE':'Glicose','GLI':'Glicose',
   'HEMOGLOBINA GLICADA':'HbA1c','GLICOHEMOGLOBINA':'HbA1c','HBA1C':'HbA1c',
@@ -1706,7 +1714,10 @@ const NAME_MAP = {
   'GGT':'GGT','FOSFATASE ALCALINA':'Fosfatase Alcalina',
   'FERRITINA':'Ferritina','FERRO SERICO':'Ferro Sérico','FERRO SÉRICO':'Ferro Sérico',
   'TSH':'TSH','T4 LIVRE':'T4 Livre','T3 LIVRE':'T3 Livre',
-  'CLORO':'Cloro',
+  'CLORO':'Cloro','CLORETOS':'Cloretos',
+  'MACROFAGOS':'Macrófagos','MACRÓFAGOS':'Macrófagos',
+  'CELULAS':'Células','CÉLULAS':'Células',
+  'CELULAS NUCLEADAS':'Células Nucleadas','CÉLULAS NUCLEADAS':'Células Nucleadas',
   'ERITROBLASTOS':'Eritroblastos',
   // Variantes com "DOSAGEM DE" (padrão HUGO)
   'DOSAGEM DE CREATININA':'Creatinina','DOSAGEM DE CREATININA TLR':'Creatinina',
@@ -1834,7 +1845,14 @@ const NAME_MAP = {
 const PARAM_WHITELIST = new Set([
   ...Object.values(NAME_MAP),
   // Extras não cobertos como valores do NAME_MAP
-  'TP (segundos)','Cálcio Total',
+  'TP (segundos)','Cálcio Total','FiO2','Temperatura',
+  'Blastos','Promielócitos',
+  // Líquor (LCR) — nomes canônicos com sufixo
+  'Células (LCR)','Células Nucleadas (LCR)','Hemácias (LCR)','Leucócitos (LCR)',
+  'Neutrófilos (LCR)','Linfócitos (LCR)','Monócitos (LCR)','Eosinófilos (LCR)',
+  'Basófilos (LCR)','Plasmócitos (LCR)','Macrófagos (LCR)',
+  'Proteínas (LCR)','Glicose (LCR)','Lactato (LCR)','Cloretos (LCR)','pH (LCR)',
+  'VDRL (LCR)','Cloretos','Macrófagos','Células','Células Nucleadas',
   // Culturas (valores de CULTURE_TYPES são adicionados depois que o objeto é definido)
 ]);
 
@@ -1852,14 +1870,23 @@ function normNameDisplay(raw) {
 
 // Lines to skip
 function skipLine(line) {
-  return /^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido\s|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica)/i.test(line.trim());
+  return /^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido\s|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica|Hora\s+da\s+[Cc]oleta|Evolução\s+do\s+paciente|Notas:|Material\s+biológico|Condições\s+do\s+Paciente|Local\s+da\s+pun[çc][ãa]o|Press[ãa]o\s+(Inicial|Final)|Adultos:|ADULTOS:)/i.test(line.trim());
 }
 
 // Known multi-parameter section headers
 const MULTI_SECTIONS = [
   'HEMOGRAMA','ERITROGRAMA','LEUCOGRAMA','PLAQUETOGRAMA','SÉRIE ERITROCITÁRIA','SÉRIE LEUCOCITÁRIA','SÉRIE PLAQUETÁRIA',
-  'GASOMETRIA ARTERIAL','GASOMETRIA','COAGULOGRAMA','ROTINA DE URINA','ROTINA DE LÍQUOR','URINÁLISE',
-  'LÍQUOR','CITOMETRIA','CITOLOGIA',
+  'GASOMETRIA ARTERIAL','GASOMETRIA VENOSA','GASOMETRIA','COAGULOGRAMA','ROTINA DE URINA','ROTINA DE LÍQUOR','URINÁLISE',
+  'LÍQUOR QUIMIOCITOLOGICO','LÍQUOR QUIMIOCITOLÓGICO','LÍQUOR, ROTINA','LÍQUOR',
+  'CITOMETRIA','CITOLOGIA',
+  // Sub-seções de líquor (mantêm inMulti + inLiquor ativos)
+  'EXAME MICROSCÓPICO','EXAME MICROSCOPICO',
+  'CITOLÓGICO DIFERENCIAL','CITOLOGICO DIFERENCIAL',
+  'EXAME BIOQUÍMICO','EXAME BIOQUIMICO',
+  'BIOQUIMICA','BIOQUÍMICA',
+  'CARACTERES FÍSICOS','CARACTERES FISICOS',
+  'ANTES DA CENTRIFUGAÇÃO','ANTES DA CENTRIFUGACAO','ANTES DA CENTRIFUGAÇÃO',
+  'APÓS A CENTRIFUGAÇÃO','APOS A CENTRIFUGACAO','APÓS A CENTRIFUGAÇÃO',
 ];
 
 function isMultiHeader(line) {
@@ -1870,19 +1897,31 @@ function isMultiHeader(line) {
 // Parse multi-parameter rows: "PARAM_NAME : VALUE UNIT   MIN - MAX UNIT"
 // Many variations
 function parseParamRow(line) {
-  const t = line.trim();
+  let t = line.trim();
 
   // Skip separator or section rows
   if (/^[-=*]+$/.test(t)) return null;
   if (skipLine(t)) return null;
   if (t.length < 3) return null;
 
-  // ─── Pio X leucogram format ───────────────────────────────────────────────
-  // "Leucócitos....: 100 % 9.000 /mm³   100 %          4.500 a 10.000 /mm³"
-  // "Bastonetes....: 1 % 90 /mm³        1 a 5 %        45 a 500 /mm³"
-  // "Linf.Atípicos.: 0 %  0 /mm³        0 %            0 /mm³"  (zero, no range)
-  // Extracts: name + absolute count + absolute reference range (range optional)
-  const reLeu = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\.]*?)[\s.:]+\d+[.,]?\d*\s+%\s+([0-9.,]+)\s*\/mm[³3](?:\s+.*?([0-9.,]+)\s+a\s+([0-9.,]+)\s*\/mm[³3])?/i;
+  // ─── Pré-processamento: normaliza abreviações com pontos (HOC/Citomed) ───
+  // "V.C.M. : 90,1 fL" → "VCM : 90,1 fL"
+  // "C.H.C.M. : 33,2 g/dL" → "CHCM : 33,2 g/dL"
+  // Detecta padrão: 1-2 letras seguidas de ponto, repetido 2+ vezes, no início da linha
+  const dottedM = t.match(/^([A-Za-z]{1,2}\.){2,}\s/);
+  if (dottedM) {
+    const dottedPart = dottedM[0].trimEnd();
+    const clean = dottedPart.replace(/\./g, '');
+    t = clean + t.slice(dottedPart.length);
+  }
+
+  // ─── Leucogram format with % + absolute count ──────────────────────────────
+  // Pio X:  "Bastonetes....: 1 % 90 /mm³        1 a 5 %        45 a 500 /mm³"
+  // IMEC:   "Bastonetes.....: 2 % 249 /mm3       45 a 500 /mm3"
+  // HOC:    "Bastonetes : 0 % 0 /mm³             1 a 5           45 a 500"
+  // HUGO:   "Neutrófilos : 68,6 % 3.279 uL       1.700 - 8.000 uL"
+  // Extracts: name + absolute count + absolute ref range (range optional)
+  const reLeu = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\.]*?)[\s.:]+\d+[.,]?\d*\s+%\s+([0-9.,]+)\s*(?:\/mm[³3]|[uµ][Ll])(?:\s+.*?([0-9.,]+)\s+(?:a|[-–])\s+([0-9.,]+)\s*(?:\/mm[³3]|[uµ][Ll])?)?/i;
   let m = t.match(reLeu);
   if (m) {
     const name = m[1].trim();
@@ -1905,7 +1944,9 @@ function parseParamRow(line) {
   m = t.match(re);
   if (m) {
     const name = m[1].trim();
-    if (name.length < 2 || name.length > 50) return null;
+    // Aceita nomes de 1 char se estiverem no NAME_MAP (ex: "K" → Potássio)
+    const minLen = normName(name) ? 1 : 2;
+    if (name.length < minLen || name.length > 50) return null;
     const val = pNum(m[2]);
     const unit = (m[3]||'').trim();
     const {refMin,refMax} = {refMin:pNum(m[4]),refMax:pNum(m[5])};
@@ -1920,7 +1961,8 @@ function parseParamRow(line) {
   m = t.match(reLt);
   if (m) {
     const name = m[1].trim();
-    if (name.length >= 2 && name.length <= 50) {
+    const minLenLt = normName(name) ? 1 : 2;
+    if (name.length >= minLenLt && name.length <= 50) {
       const val = pNum(m[2]);
       const unit = (m[3]||'').trim();
       const refMax = pNum(m[4]);
@@ -1932,11 +1974,12 @@ function parseParamRow(line) {
 
   // ─── Pattern without ref ─────────────────────────────────────────────────
   // Covers: "PARAM : VALUE UNIT"
-  const re2 = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\/\.]*?)[\s.:]+([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^·]+)?$/;
+  const re2 = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\+\-\/\.]*?)[\s.:]+([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^·°]+)?$/;
   m = t.match(re2);
   if (m) {
     const name = m[1].trim();
-    if (name.length < 2 || name.length > 50) return null;
+    const minLen2 = normName(name) ? 1 : 2;
+    if (name.length < minLen2 || name.length > 50) return null;
     if (/^\d/.test(name)) return null;
     const val = pNum(m[2]);
     if (val===null) return null;
@@ -1945,6 +1988,50 @@ function parseParamRow(line) {
   }
 
   return null;
+}
+
+// ======================================================================
+// LÍQUOR: mapeamento de nomes para contexto LCR
+// Parâmetros que conflitam com sangue recebem sufixo "(LCR)"
+// ======================================================================
+const LCR_RENAME = {
+  'Hemácias':'Hemácias (LCR)',
+  'Leucócitos':'Leucócitos (LCR)',
+  'Neutrófilos':'Neutrófilos (LCR)',
+  'Linfócitos':'Linfócitos (LCR)',
+  'Monócitos':'Monócitos (LCR)',
+  'Eosinófilos':'Eosinófilos (LCR)',
+  'Basófilos':'Basófilos (LCR)',
+  'Plasmócitos':'Plasmócitos (LCR)',
+  'Proteínas Totais':'Proteínas (LCR)',
+  'Glicose':'Glicose (LCR)',
+  'Lactato':'Lactato (LCR)',
+  'pH':'pH (LCR)',
+  'Cloro':'Cloretos (LCR)',
+};
+
+// Nomes já canônicos de líquor (não precisam renomear)
+const LCR_KEEP = new Set([
+  'Células (LCR)','Células Nucleadas (LCR)','Hemácias (LCR)','Leucócitos (LCR)',
+  'Proteínas (LCR)','Glicose (LCR)','Lactato (LCR)','Cloretos (LCR)',
+  'pH (LCR)','Macrófagos (LCR)','VDRL (LCR)',
+  'Neutrófilos (LCR)','Linfócitos (LCR)','Monócitos (LCR)',
+  'Eosinófilos (LCR)','Basófilos (LCR)','Plasmócitos (LCR)',
+]);
+
+function _lcrName(name) {
+  // Se já tem sufixo LCR, mantém
+  if (LCR_KEEP.has(name)) return name;
+  // Se está na tabela de rename, aplica
+  if (LCR_RENAME[name]) return LCR_RENAME[name];
+  // Params específicos de líquor que não conflitam
+  if (/^(Células|Celulas)/i.test(name)) return 'Células (LCR)';
+  if (/^Células Nucleadas/i.test(name)) return 'Células Nucleadas (LCR)';
+  if (/^Macr[oó]fagos/i.test(name)) return 'Macrófagos (LCR)';
+  if (/^Cloretos/i.test(name)) return 'Cloretos (LCR)';
+  if (/^Prote[ií]nas?$/i.test(name)) return 'Proteínas (LCR)';
+  // Demais: mantém sem sufixo (params como Aspecto, Cor não conflitam de forma relevante)
+  return name;
 }
 
 function parsePDFText(text, format) {
@@ -1956,6 +2043,7 @@ function parsePDFText(text, format) {
   // And also multi-param sections
 
   let inMulti = false;
+  let inLiquor = false;  // Rastreia contexto de líquor para sufixo "(LCR)"
   let currentExamName = '';
   let lookingForRef = false;
   let pendingResult = null;
@@ -2071,6 +2159,17 @@ function parsePDFText(text, format) {
       inMulti = true;
       currentExamName = '';
       pendingResult = null;
+      // Detecta contexto de líquor (seções que contêm parâmetros que conflitam com sangue)
+      const lineUp = line.trim().toUpperCase();
+      const isLiquorHeader = /^(L[ÍI]QUOR|ROTINA DE L[ÍI]QUOR)/.test(lineUp);
+      const isLiquorSubHeader = /^(EXAME MICROSC|CITOL[ÓO]GICO DIFERENCIAL|EXAME BIOQU[ÍI]M|BIOQU[ÍI]MICA|CARACTERES F[ÍI]S|ANTES DA CENTRIFUGA|AP[ÓO]S A CENTRIFUGA)/.test(lineUp);
+      if (isLiquorHeader) {
+        inLiquor = true;
+      } else if (!isLiquorSubHeader) {
+        // Saiu do líquor ao entrar em outra seção principal (hemograma, gasometria, etc.)
+        inLiquor = false;
+      }
+      // Sub-headers de líquor mantêm inLiquor ativo (não alteram)
       continue;
     }
 
@@ -2080,10 +2179,11 @@ function parsePDFText(text, format) {
     const isExamHeader = /^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ\s\(\)\/\-]*$/.test(line) &&
                          line.length > 3 && line.length < 60 &&
                          !isMultiHeader(line) &&
-                         !/^(VALORES|VALOR|SÉRIE|ERITROGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQUÍMICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULAÇÃO)/i.test(line);
+                         !/^(VALORES|VALOR|SÉRIE|ERITROGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI)/i.test(line);
 
     if (isExamHeader) {
       inMulti = false;  // Exit multi-param mode when a new single exam header is detected
+      inLiquor = false; // Exit liquor context
       currentExamName = line.trim();
       pendingResult = null;
       continue;
@@ -2167,13 +2267,17 @@ function parsePDFText(text, format) {
       }
     }
 
-    // Multi-param row (hemograma, gasometria, etc.)
+    // Multi-param row (hemograma, gasometria, líquor, etc.)
     if (inMulti) {
       if (skipLine(line)) continue;
       // Check for end of section: blank or new section
-      if (/^[-=*]+$/.test(line)) { inMulti=false; continue; }
+      if (/^[-=*]+$/.test(line)) { inMulti=false; inLiquor=false; continue; }
       const row = parseParamRow(line);
       if (row) {
+        // Em contexto de líquor, renomeia parâmetros que conflitam com exames de sangue
+        if (inLiquor) {
+          row.name = _lcrName(row.name);
+        }
         row.date = date;
         row.status = getStatus(row.value,row.refMin,row.refMax);
         if (!SKIP_NAMES.has(row.name.toUpperCase())) results.push(row);
@@ -2221,9 +2325,19 @@ const SKIP_NAMES = new Set([
   'RESULTADO','REFERÊNCIA','VALOR DE REFERÊNCIA','VALORES DE REFERÊNCIA','VALORES ABSOLUTOS',
   'MATERIAL','MÉTODO','MÉTODO','COLETADO','LIBERADO','HASH','IMPRESSO',
   'SÉRIE ERITROCITÁRIA','SÉRIE LEUCOCITÁRIA','SÉRIE PLAQUETÁRIA','ERITROGRAMA','LEUCOGRAMA',
-  'PLAQUETOGRAMA','BIOQUÍMICA','CITOMETRIA','CITOLOGIA','VDRL','BACTERIOSCOPIA GRAM',
-  'BACTERIOSCOPIA ZIEHL','PESQUISA DE FUNGOS','ASPECTO','COR','IDENTIFICAÇÃO',
-  'EXAME FÍSICO','EXAME QUÍMICO','EXAME MICROSCÓPICO',
+  'PLAQUETOGRAMA','HEMOGRAMA COMPLETO','HEMOGRAMA COM PLAQUETAS','HEMOGRAMA AUTOMATIZADO',
+  'BIOQUÍMICA','BIOQUIMICA','CITOMETRIA','CITOLOGIA',
+  'VDRL','BACTERIOSCOPIA GRAM','BACTERIOSCOPIA ZIEHL','PESQUISA DE FUNGOS',
+  'ASPECTO','COR','IDENTIFICAÇÃO',
+  'EXAME FÍSICO','EXAME QUÍMICO','EXAME MICROSCÓPICO','EXAME MICROSCOPICO',
+  'CITOLÓGICO DIFERENCIAL','CITOLOGICO DIFERENCIAL','EXAME BIOQUÍMICO','EXAME BIOQUIMICO',
+  'CARACTERES FÍSICOS','CARACTERES FISICOS',
+  'ANTES DA CENTRIFUGAÇÃO','ANTES DA CENTRIFUGACAO',
+  'APÓS A CENTRIFUGAÇÃO','APOS A CENTRIFUGACAO',
+  'CONDIÇÕES DO PACIENTE','CONDICOES DO PACIENTE',
+  'LOCAL DA PUNÇÃO','LOCAL DA PUNCAO',
+  'PRESSÃO INICIAL','PRESSAO INICIAL','PRESSÃO FINAL','PRESSAO FINAL',
+  'RETIRADO','COÁGULO','COAGULO',
 ]);
 
 // ======================================================================
@@ -2235,7 +2349,7 @@ const CULTURE_TYPES = {
   'ASPIRADO TRAQUEAL':'Aspirado Traqueal','SECREÇÃO TRAQUEAL':'Secreção Traqueal',
   'LAVADO BRONCOALVEOLAR':'Lavado Broncoalveolar','LBA':'Lavado Broncoalveolar',
   'ESCARRO':'Escarro',
-  'LÍQUOR':'Líquor','LIQUOR':'Líquor','CULTURA DE LÍQUOR':'Líquor',
+  'CULTURA DE LÍQUOR':'Líquor','CULTURA DE LIQUOR':'Líquor',
   'LÍQUIDO':'Líquido','LIQUIDO PLEURAL':'Líquido Pleural','LÍQUIDO PLEURAL':'Líquido Pleural',
   'LÍQUIDO ASCÍTICO':'Líquido Ascítico','LIQUIDO ASCITICO':'Líquido Ascítico',
   'LÍQUIDO SINOVIAL':'Líquido Sinovial',

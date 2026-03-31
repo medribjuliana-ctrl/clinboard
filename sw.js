@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v3
-const CACHE = 'clinboard-v3';
+// clinBoard Service Worker — v7
+const CACHE = 'clinboard-v7';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [
