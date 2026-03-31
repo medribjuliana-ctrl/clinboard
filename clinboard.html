@@ -2374,7 +2374,7 @@ function showSynonymPicker(i) {
   const pick = document.createElement('div');
   pick.className = 'synonym-picker';
   pick.innerHTML = `<datalist id="wl-dl-${i}">${opts}</datalist>
-    <input id="syn-inp-${i}" type="text" list="wl-dl-${i}" placeholder="Digite o parâmetro existente…" autocomplete="off">
+    <input id="syn-inp-${i}" type="text" list="wl-dl-${i}" placeholder="Digite o parâmetro existente…" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmSynonym(${i});}">
     <button class="sp-confirm" onclick="confirmSynonym(${i})">✓</button>
     <button class="sp-cancel" onclick="document.getElementById('ext-item-${i}').querySelector('.synonym-picker').remove()">✕</button>`;
   el.querySelector('.ext-name').appendChild(pick);
@@ -2384,21 +2384,34 @@ function showSynonymPicker(i) {
 function confirmSynonym(i) {
   const r = extractedResults[i];
   const inp = document.getElementById('syn-inp-'+i);
-  const canonical = inp?.value.trim();
-  if (!canonical) { toast('Digite o nome do parâmetro','err'); return; }
+  const typed = inp?.value.trim();
+  if (!typed) { toast('Digite o nome do parâmetro','err'); return; }
+
+  // Busca correspondência exata ou case-insensitive na whitelist
+  let canonical = typed;
+  if (!PARAM_WHITELIST.has(typed)) {
+    const typedUp = typed.toUpperCase();
+    for (const p of PARAM_WHITELIST) {
+      if (p.toUpperCase() === typedUp) { canonical = p; break; }
+    }
+  }
+
   const applyCanonical = () => {
     const cn2 = loadCustomNames();
     if (!cn2.newParams.includes(canonical)) { cn2.newParams.push(canonical); }
     cn2.synonyms[r.name.trim().toUpperCase().replace(/\s+/g,' ')] = canonical;
     saveCustomNames(cn2);
+    fbScheduleSync();
     NAME_MAP[r.name.trim().toUpperCase().replace(/\s+/g,' ')] = canonical;
     PARAM_WHITELIST.add(canonical);
     r.name = canonical; r.known = true; r.included = true;
     _markKnown(i, canonical);
     toast(`Mapeado para "${canonical}" ✓`, 'ok');
   };
+
   if (!PARAM_WHITELIST.has(canonical)) {
-    confirm2(`"${canonical}" não está na lista. Deseja criar como novo parâmetro?`, applyCanonical);
+    // Parâmetro não existe — pede confirmação para criar como novo
+    confirm2(`"${canonical}" não está na lista de parâmetros conhecidos. Criar como novo parâmetro?`, applyCanonical);
   } else {
     applyCanonical();
   }
