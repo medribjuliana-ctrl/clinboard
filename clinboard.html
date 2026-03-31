@@ -646,12 +646,16 @@ function fbSignIn() {
 
 function fbSignOut() {
   if (!_fbAuth) return;
-  _fbAuth.signOut().then(() => {
-    db = { units:[] };
-    localStorage.removeItem('clinboard_db');
-    localStorage.removeItem('clinboard_custom_names');
-    renderHome();
-  });
+  // Limpa estado local de forma SÍNCRONA antes do signOut assíncrono.
+  // Isso evita a condição de corrida onde signOut().then() poderia
+  // executar DEPOIS que o usuário já havia feito login novamente,
+  // sobrescrevendo db com dados vazios e limpando a tela.
+  db = { units: [] };
+  try { localStorage.removeItem('clinboard_db'); } catch {}
+  try { localStorage.removeItem('clinboard_custom_names'); } catch {}
+  renderHome();
+  // signOut em si não precisa de callback — onAuthStateChanged cuida do resto
+  _fbAuth.signOut().catch(e => console.warn('[Auth] signOut erro:', e.message));
 }
 
 // ── Estrutura do banco ────────────────────────────────────────────────
@@ -735,9 +739,16 @@ async function _fbLoadWithRetry(_retry) {
           toast('Dados migrados para o novo formato ✓', 'ok');
         }
       } else {
-        console.log('[Sync] primeiro login — enviando dados locais');
+        console.log('[Sync] primeiro login — carregando dados locais');
         loadDB();
-        await fbPushToCloud();
+        if (db.units && db.units.length > 0) {
+          // Só envia para a nuvem se houver dados locais para preservar
+          console.log('[Sync] enviando', db.units.length, 'unidade(s) local(is) para a nuvem');
+          await fbPushToCloud();
+        } else {
+          // Sem dados locais: inicializa banco vazio sem sobrescrever a nuvem
+          console.log('[Sync] sem dados locais — banco iniciado vazio');
+        }
       }
     }
 
