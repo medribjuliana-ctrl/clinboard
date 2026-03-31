@@ -619,21 +619,33 @@ function _getCustomNames() {
   try { return JSON.parse(localStorage.getItem('clinboard_custom_names') || '{}'); } catch { return {}; }
 }
 
+// ── Firestore: referências de caminho ────────────────────────────────
+// Estrutura v2:
+//   users/{uid}/data/meta        → metadados + customNames
+//   users/{uid}/units/{unitId}   → cada unidade com seus pacientes e exames
+function _fbRefs() {
+  const userDoc = _fbStore.collection('users').doc(_fbUser.uid);
+  return {
+    meta:  userDoc.collection('data').doc('meta'),  // DocumentReference
+    units: userDoc.collection('units'),             // CollectionReference
+    dataCol: userDoc.collection('data'),            // para migração v1
+  };
+}
+
 // ── Firestore: carregar ───────────────────────────────────────────────
-// Estrutura v2: users/{uid}/data/meta + users/{uid}/data/units/{unitId}
 // Migra automaticamente do formato v1 (data/main) se encontrado
 async function fbLoadFromCloud() {
   if (!_fbStore || !_fbUser) return;
   fbShowLoading('Carregando dados...');
   try {
-    const baseRef = _fbStore.collection('users').doc(_fbUser.uid).collection('data');
-    const metaDoc = await baseRef.doc('meta').get();
+    const { meta, units, dataCol } = _fbRefs();
+    const metaDoc = await meta.get();
 
     if (metaDoc.exists && metaDoc.data().schemaVersion === _SCHEMA_VERSION) {
-      // ── Formato v2: carregar por subcoleção de unidades ──
+      // ── Formato v2: carregar por coleção de unidades ──
       const metaData = metaDoc.data();
       const unitIds = metaData.unitIds || [];
-      const unitDocs = await Promise.all(unitIds.map(id => baseRef.collection('units').doc(id).get()));
+      const unitDocs = await Promise.all(unitIds.map(id => units.doc(id).get()));
       db = { units: [] };
       unitDocs.forEach(d => { if (d.exists) db.units.push(d.data()); });
       _ensureDbStructure();
@@ -642,7 +654,7 @@ async function fbLoadFromCloud() {
       }
     } else {
       // ── Tentativa de migração do formato v1 ──
-      const oldDoc = await baseRef.doc('main').get();
+      const oldDoc = await dataCol.doc('main').get();
       if (oldDoc.exists) {
         const data = oldDoc.data();
         if (data.db) {
@@ -651,10 +663,9 @@ async function fbLoadFromCloud() {
           if (data.customNames) {
             try { localStorage.setItem('clinboard_custom_names', JSON.stringify(data.customNames)); } catch {}
           }
-          // Migrar para v2 e apagar documento antigo
           fbShowLoading('Migrando dados para novo formato...');
           await fbPushToCloud();
-          await baseRef.doc('main').delete();
+          await dataCol.doc('main').delete();
           toast('Dados migrados para o novo formato ✓', 'ok');
         }
       } else {
@@ -681,27 +692,25 @@ async function fbPushToCloud() {
   if (!_fbStore || !_fbUser) return;
   _setSyncStatus('syncing');
   try {
-    const baseRef = _fbStore.collection('users').doc(_fbUser.uid).collection('data');
+    const { meta, units } = _fbRefs();
     const customNames = _getCustomNames();
     const currentUnitIds = db.units.map(u => u.id);
 
     // Batch atômico: meta + todas as unidades
     const batch = _fbStore.batch();
-    batch.set(baseRef.doc('meta'), {
+    batch.set(meta, {
       customNames,
       unitIds: currentUnitIds,
       schemaVersion: _SCHEMA_VERSION,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    db.units.forEach(unit => {
-      batch.set(baseRef.collection('units').doc(unit.id), unit);
-    });
+    db.units.forEach(unit => batch.set(units.doc(unit.id), unit));
     await batch.commit();
 
     // Remover documentos de unidades excluídas
     if (_pendingDeletes.size > 0) {
       const delBatch = _fbStore.batch();
-      _pendingDeletes.forEach(id => delBatch.delete(baseRef.collection('units').doc(id)));
+      _pendingDeletes.forEach(id => delBatch.delete(units.doc(id)));
       await delBatch.commit();
       _pendingDeletes.clear();
     }
@@ -2562,11 +2571,18 @@ document.addEventListener('keydown', e => {
 })();
 
 // Registrar Service Worker para funcionamento offline (PWA)
+// Só registra se o sw.js estiver acessível (ex: GitHub Pages); falha silenciosa em outros contextos
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('SW registrado:', reg.scope))
-      .catch(err => console.warn('SW falhou:', err));
+    fetch('./sw.js', { method: 'HEAD' })
+      .then(r => {
+        if (r.ok) {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('SW registrado:', reg.scope))
+            .catch(err => console.log('SW não registrado:', err.message));
+        }
+      })
+      .catch(() => {}); // sw.js ausente — sem aviso
   });
 }
 </script>
