@@ -1135,11 +1135,13 @@ function renderLabPanel() {
   const GROUPS = {
     'Hemograma': ['Hemácias','Hemoglobina','Hematócrito','VCM','HCM','CHCM','RDW','Eritroblastos','Leucócitos','Blastos','Promielócitos','Mielócitos','Metamielócitos','Bastonetes','Segmentados','Neutrófilos','Eosinófilos','Basófilos','Linfócitos','Linfócitos Atípicos','Monócitos','Plasmócitos','Plaquetas','VPM','PDW','PCT'],
     'Gasometria': ['pH','pCO2','pO2','HCO3','BE','SatO2','TCO2','Lactato','Glicose','FiO2','Temperatura'],
-    'Bioquímica': ['Ureia','Creatinina','TGO (AST)','TGP (ALT)','PCR','Cálcio Total','Bilirrubina Total','Bilirrubina Direta','Bilirrubina Indireta','Albumina','Proteínas Totais','Fosfatase Alcalina','GGT'],
+    'Bioquímica': ['Ureia','Creatinina','TGO (AST)','TGP (ALT)','Cálcio Total','Bilirrubina Total','Bilirrubina Direta','Bilirrubina Indireta','Albumina','Proteínas Totais','Globulinas','Relação A/G','Fosfatase Alcalina','GGT'],
     'Eletrólitos': ['Sódio','Potássio','Cálcio Iônico','Magnésio','Fósforo','Cloro'],
     'Inflamatório': ['PCR','Procalcitonina','Ferritina','Fibrinogênio','Dímero-D'],
     'Coagulação': ['TP - Atividade','INR','TTPA'],
     'Cardíaco': ['CPK','Troponina','BNP'],
+    'Sorologias': ['HIV 1/2','HIV 1/2 (TR)','Toxoplasmose IgG','Toxoplasmose IgM','CMV IgG','CMV IgM','EBV IgG','EBV IgM','EBV VCA IgG','EBV VCA IgM','EBV EBNA IgG','Dengue NS1','Dengue NS1 (TR)','Dengue IgG','Dengue IgM','Dengue (TR)','COVID-19','COVID-19 (TR)','COVID-19 IgG','COVID-19 IgM','COVID-19 Ag','Influenza A','Influenza B','Influenza A/B','Influenza (TR)','HBsAg','Anti-HBs','Anti-HBc IgM','Anti-HBc Total','Anti-HCV','Anti-HAV IgM','Anti-HAV IgG','VDRL','FTA-ABS IgG','FTA-ABS IgM','Chagas','Chagas IgG','HTLV I/II'],
+    'Microbiologia': ['Toxina A (C. difficile)','Toxina B (C. difficile)'],
     'Líquor': ['Células (LCR)','Células Nucleadas (LCR)','Hemácias (LCR)','Leucócitos (LCR)','Neutrófilos (LCR)','Linfócitos (LCR)','Monócitos (LCR)','Eosinófilos (LCR)','Basófilos (LCR)','Plasmócitos (LCR)','Macrófagos (LCR)','Proteínas (LCR)','Glicose (LCR)','Lactato (LCR)','Cloretos (LCR)','pH (LCR)','VDRL (LCR)'],
     'Urinálise': ['Cor (U)','Aspecto (U)','Depósito','Densidade','pH (U)','Proteínas (U)','Glicose (U)','Cetonas','Bilirrubina (U)','Nitrito','Urobilinogênio','Hemoglobina (U)','Est. Leucocitária','Leucócitos (U)','Hemácias (U)','Cél. Epiteliais','Cél. Escamosas','Cél. Não Escamosas','Cél. Transicionais','Cél. Tubulares','Cilindros','Cilindros Hialinos','Cilindros Patol.','Flora Bacteriana','Leveduras','Cristais','Filamentos de Muco','Espermatozoides'],
     'Culturas': ['Hemocultura','Urocultura','Aspirado Traqueal','Secreção Traqueal','Lavado Broncoalveolar','Escarro','Líquor','Líquido Pleural','Líquido Ascítico','Líquido Sinovial','Líquido','Secreção','Fragmento','Swab','Swab Retal','Swab Nasal','Ponta de Cateter','Coprocultura','Cultura de Fezes'],
@@ -1221,15 +1223,17 @@ function downloadLabPDF() {
   });
 
   // Group params (same categories as renderLabPanel)
-  const GORDER = ['Hemograma','Gasometria','Bioquímica','Eletrólitos','Inflamatório','Coagulação','Cardíaco','Líquor','Urinálise','Culturas','Outros'];
+  const GORDER = ['Hemograma','Gasometria','Bioquímica','Eletrólitos','Inflamatório','Coagulação','Cardíaco','Sorologias','Microbiologia','Líquor','Urinálise','Culturas','Outros'];
   const GMAP = {
     'Hemograma':['Hemácias','Hemoglobina','Hematócrito','VCM','HCM','CHCM','RDW','Eritroblastos','Leucócitos','Blastos','Promielócitos','Mielócitos','Metamielócitos','Bastonetes','Segmentados','Neutrófilos','Eosinófilos','Basófilos','Linfócitos','Linfócitos Atípicos','Monócitos','Plasmócitos','Plaquetas','VPM','PDW','PCT'],
     'Gasometria':['pH','pCO2','pO2','HCO3','BE','SatO2','TCO2','Lactato','Glicose','FiO2','Temperatura'],
-    'Bioquímica':['Ureia','Creatinina','TGO (AST)','TGP (ALT)','PCR','Cálcio Total','Bilirrubina Total','Bilirrubina Direta','Bilirrubina Indireta','Albumina','Proteínas Totais','Fosfatase Alcalina','GGT'],
+    'Bioquímica':['Ureia','Creatinina','TGO (AST)','TGP (ALT)','Cálcio Total','Bilirrubina Total','Bilirrubina Direta','Bilirrubina Indireta','Albumina','Proteínas Totais','Globulinas','Relação A/G','Fosfatase Alcalina','GGT'],
     'Eletrólitos':['Sódio','Potássio','Cálcio Iônico','Magnésio','Fósforo','Cloro'],
     'Inflamatório':['PCR','Procalcitonina','Ferritina','Fibrinogênio','Dímero-D'],
     'Coagulação':['TP - Atividade','INR','TTPA'],
     'Cardíaco':['CPK','Troponina','BNP'],
+    'Sorologias':['HIV 1/2','HIV 1/2 (TR)','Toxoplasmose IgG','Toxoplasmose IgM','CMV IgG','CMV IgM','EBV IgG','EBV IgM','EBV VCA IgG','EBV VCA IgM','EBV EBNA IgG','Dengue NS1','Dengue NS1 (TR)','Dengue IgG','Dengue IgM','Dengue (TR)','COVID-19','COVID-19 (TR)','COVID-19 IgG','COVID-19 IgM','COVID-19 Ag','Influenza A','Influenza B','Influenza A/B','Influenza (TR)','HBsAg','Anti-HBs','Anti-HBc IgM','Anti-HBc Total','Anti-HCV','Anti-HAV IgM','Anti-HAV IgG','VDRL','FTA-ABS IgG','FTA-ABS IgM','Chagas','Chagas IgG','HTLV I/II'],
+    'Microbiologia':['Toxina A (C. difficile)','Toxina B (C. difficile)'],
     'Líquor':['Células (LCR)','Células Nucleadas (LCR)','Hemácias (LCR)','Leucócitos (LCR)','Neutrófilos (LCR)','Linfócitos (LCR)','Monócitos (LCR)','Eosinófilos (LCR)','Basófilos (LCR)','Plasmócitos (LCR)','Macrófagos (LCR)','Proteínas (LCR)','Glicose (LCR)','Lactato (LCR)','Cloretos (LCR)','pH (LCR)','VDRL (LCR)'],
     'Urinálise':['Cor (U)','Aspecto (U)','Depósito','Densidade','pH (U)','Proteínas (U)','Glicose (U)','Cetonas','Bilirrubina (U)','Nitrito','Urobilinogênio','Hemoglobina (U)','Est. Leucocitária','Leucócitos (U)','Hemácias (U)','Cél. Epiteliais','Cél. Escamosas','Cél. Não Escamosas','Cél. Transicionais','Cél. Tubulares','Cilindros','Cilindros Hialinos','Cilindros Patol.','Flora Bacteriana','Leveduras','Cristais','Filamentos de Muco','Espermatozoides'],
     'Culturas':['Hemocultura','Urocultura','Aspirado Traqueal','Secreção Traqueal','Lavado Broncoalveolar','Escarro','Líquor','Líquido Pleural','Líquido Ascítico','Líquido Sinovial','Líquido','Secreção','Fragmento','Swab','Swab Retal','Swab Nasal','Ponta de Cateter','Coprocultura','Cultura de Fezes'],
@@ -1838,6 +1842,84 @@ const NAME_MAP = {
   'ESTERASE LEUCOCITÁRIA':'Est. Leucocitária','ESTERASE LEUCOCITARIA':'Est. Leucocitária',
   'CELULAS EPITELIAIS':'Cél. Epiteliais','CÉLULAS EPITELIAIS':'Cél. Epiteliais',
   'LEVEDURAS':'Leveduras','CILINDROS':'Cilindros','CRISTAIS':'Cristais',
+  // Proteínas frações
+  'GLOBULINAS':'Globulinas','GLOBULINA':'Globulinas',
+  'RELAÇÃO A/G':'Relação A/G','RELACAO A/G':'Relação A/G',
+  'RELAÇÃO ALBUMINA/GLOBULINA':'Relação A/G','RELACAO ALBUMINA/GLOBULINA':'Relação A/G',
+  'DOSAGEM DE GLOBULINAS':'Globulinas',
+  // I.N.R (dotted format HOC coagulograma)
+  'I.N.R':'INR','I.N.R.':'INR',
+  // Piócitos (variante urinária)
+  'PIÓCITOS':'Leucócitos (U)','PIOCITOS':'Leucócitos (U)',
+  // Toxinas C. difficile
+  'C. DIFFICILE TOXINA A':'Toxina A (C. difficile)',
+  'C. DIFFICILE TOXINA B':'Toxina B (C. difficile)',
+  'TOXINA A':'Toxina A (C. difficile)','TOXINA B':'Toxina B (C. difficile)',
+  'PESQUISA DA TOXINA A':'Toxina A (C. difficile)','PESQUISA DA TOXINA B':'Toxina B (C. difficile)',
+  // Sorologias — HIV
+  'HIV 1 E 2, TESTE RÁPIDO':'HIV 1/2 (TR)','HIV 1 E 2, TESTE RAPIDO':'HIV 1/2 (TR)',
+  'HIV 1 E 2':'HIV 1/2','HIV':'HIV 1/2',
+  'ANTI-HIV':'HIV 1/2','ANTI HIV':'HIV 1/2',
+  'HIV 1/2':'HIV 1/2','HIV 1 E 2 - TESTE RAPIDO':'HIV 1/2 (TR)',
+  'HIV, TESTE RAPIDO':'HIV 1/2 (TR)','HIV, TESTE RÁPIDO':'HIV 1/2 (TR)',
+  // Sorologias — Toxoplasmose
+  'TOXOPLASMOSE IGG':'Toxoplasmose IgG','TOXOPLASMOSE IGM':'Toxoplasmose IgM',
+  'ANTI-TOXOPLASMA IGG':'Toxoplasmose IgG','ANTI-TOXOPLASMA IGM':'Toxoplasmose IgM',
+  'TOXOPLASMA IGG':'Toxoplasmose IgG','TOXOPLASMA IGM':'Toxoplasmose IgM',
+  'IGG TOXOPLASMOSE':'Toxoplasmose IgG','IGM TOXOPLASMOSE':'Toxoplasmose IgM',
+  'TOXOPLASMOSE, IGG':'Toxoplasmose IgG','TOXOPLASMOSE, IGM':'Toxoplasmose IgM',
+  'ANTICORPOS IGG ANTI-TOXOPLASMA':'Toxoplasmose IgG','ANTICORPOS IGM ANTI-TOXOPLASMA':'Toxoplasmose IgM',
+  // Sorologias — CMV
+  'CITOMEGALOVIRUS IGG':'CMV IgG','CITOMEGALOVÍRUS IGG':'CMV IgG',
+  'CITOMEGALOVIRUS IGM':'CMV IgM','CITOMEGALOVÍRUS IGM':'CMV IgM',
+  'CMV IGG':'CMV IgG','CMV IGM':'CMV IgM',
+  'ANTI-CMV IGG':'CMV IgG','ANTI-CMV IGM':'CMV IgM',
+  'ANTICORPOS IGG ANTI-CMV':'CMV IgG','ANTICORPOS IGM ANTI-CMV':'CMV IgM',
+  'CITOMEGALOVIRUS, IGG':'CMV IgG','CITOMEGALOVIRUS, IGM':'CMV IgM',
+  'CITOMEGALOVÍRUS, IGG':'CMV IgG','CITOMEGALOVÍRUS, IGM':'CMV IgM',
+  // Sorologias — EBV
+  'EBV IGG':'EBV IgG','EBV IGM':'EBV IgM',
+  'ANTI-VCA IGG':'EBV VCA IgG','ANTI-VCA IGM':'EBV VCA IgM',
+  'ANTI-EBNA IGG':'EBV EBNA IgG','ANTI-EBNA':'EBV EBNA IgG',
+  'EPSTEIN BARR VIRUS IGG':'EBV IgG','EPSTEIN BARR VIRUS IGM':'EBV IgM',
+  'EPSTEIN-BARR IGG':'EBV IgG','EPSTEIN-BARR IGM':'EBV IgM',
+  'EBV, IGG':'EBV IgG','EBV, IGM':'EBV IgM',
+  'EPSTEIN BARR, IGG':'EBV IgG','EPSTEIN BARR, IGM':'EBV IgM',
+  // Sorologias — Dengue
+  'DENGUE NS1':'Dengue NS1','NS1 DENGUE':'Dengue NS1',
+  'DENGUE IGG':'Dengue IgG','DENGUE IGM':'Dengue IgM',
+  'ANTI-DENGUE IGG':'Dengue IgG','ANTI-DENGUE IGM':'Dengue IgM',
+  'DENGUE, NS1':'Dengue NS1','DENGUE, IGG':'Dengue IgG','DENGUE, IGM':'Dengue IgM',
+  'DENGUE NS1, TESTE RAPIDO':'Dengue NS1 (TR)','DENGUE NS1, TESTE RÁPIDO':'Dengue NS1 (TR)',
+  'DENGUE, TESTE RAPIDO':'Dengue (TR)','DENGUE, TESTE RÁPIDO':'Dengue (TR)',
+  // Sorologias — COVID-19
+  'COVID-19 IGG':'COVID-19 IgG','COVID-19 IGM':'COVID-19 IgM',
+  'COVID-19 ANTIGENO':'COVID-19 Ag','COVID-19 ANTÍGENO':'COVID-19 Ag',
+  'SARS-COV-2 IGG':'COVID-19 IgG','SARS-COV-2 IGM':'COVID-19 IgM',
+  'SARS-COV-2':'COVID-19','SARS-COV-2 ANTIGENO':'COVID-19 Ag',
+  'COVID-19, TESTE RAPIDO':'COVID-19 (TR)','COVID-19, TESTE RÁPIDO':'COVID-19 (TR)',
+  'COVID-19':'COVID-19',
+  // Sorologias — Influenza
+  'INFLUENZA A':'Influenza A','INFLUENZA B':'Influenza B',
+  'INFLUENZA A E B':'Influenza A/B','INFLUENZA A/B':'Influenza A/B',
+  'INFLUENZA, TESTE RAPIDO':'Influenza (TR)','INFLUENZA, TESTE RÁPIDO':'Influenza (TR)',
+  // Sorologias — Hepatites
+  'HBSAG':'HBsAg','ANTI-HBS':'Anti-HBs','ANTI-HCV':'Anti-HCV',
+  'HEPATITE B HBSAG':'HBsAg','HEPATITE C ANTI-HCV':'Anti-HCV',
+  'ANTI-HAV IGM':'Anti-HAV IgM','ANTI-HAV IGG':'Anti-HAV IgG',
+  'HEPATITE A, IGM':'Anti-HAV IgM','HEPATITE A, IGG':'Anti-HAV IgG',
+  'HEPATITE B, HBSAG':'HBsAg','ANTI HBS':'Anti-HBs','ANTI HCV':'Anti-HCV',
+  'HBS AG':'HBsAg','ANTI-HBC IGM':'Anti-HBc IgM','ANTI-HBC TOTAL':'Anti-HBc Total',
+  'ANTI HBC IGM':'Anti-HBc IgM','ANTI HBC TOTAL':'Anti-HBc Total',
+  // Sorologias — VDRL / Sífilis
+  'VDRL':'VDRL','VDRL SORO':'VDRL','VDRL SANGUE':'VDRL',
+  'FTA-ABS IGG':'FTA-ABS IgG','FTA-ABS IGM':'FTA-ABS IgM',
+  // Sorologias — Chagas
+  'CHAGAS IGG':'Chagas IgG','DOENÇA DE CHAGAS':'Chagas',
+  'ANTI-TRYPANOSOMA CRUZI':'Chagas','CHAGAS':'Chagas',
+  // Sorologias — HTLV
+  'HTLV I/II':'HTLV I/II','HTLV I E II':'HTLV I/II','HTLV':'HTLV I/II',
+  'ANTI-HTLV I/II':'HTLV I/II','ANTI-HTLV':'HTLV I/II',
 };
 
 // PARAM_WHITELIST: conjunto de todos os nomes canônicos conhecidos
@@ -1853,6 +1935,22 @@ const PARAM_WHITELIST = new Set([
   'Basófilos (LCR)','Plasmócitos (LCR)','Macrófagos (LCR)',
   'Proteínas (LCR)','Glicose (LCR)','Lactato (LCR)','Cloretos (LCR)','pH (LCR)',
   'VDRL (LCR)','Cloretos','Macrófagos','Células','Células Nucleadas',
+  // Proteínas frações
+  'Globulinas','Relação A/G',
+  // Toxinas
+  'Toxina A (C. difficile)','Toxina B (C. difficile)',
+  // Sorologias
+  'HIV 1/2','HIV 1/2 (TR)',
+  'Toxoplasmose IgG','Toxoplasmose IgM',
+  'CMV IgG','CMV IgM',
+  'EBV IgG','EBV IgM','EBV VCA IgG','EBV VCA IgM','EBV EBNA IgG',
+  'Dengue NS1','Dengue NS1 (TR)','Dengue IgG','Dengue IgM','Dengue (TR)',
+  'COVID-19','COVID-19 (TR)','COVID-19 IgG','COVID-19 IgM','COVID-19 Ag',
+  'Influenza A','Influenza B','Influenza A/B','Influenza (TR)',
+  'HBsAg','Anti-HBs','Anti-HBc IgM','Anti-HBc Total','Anti-HCV',
+  'Anti-HAV IgM','Anti-HAV IgG',
+  'VDRL','FTA-ABS IgG','FTA-ABS IgM',
+  'Chagas','Chagas IgG','HTLV I/II',
   // Culturas (valores de CULTURE_TYPES são adicionados depois que o objeto é definido)
 ]);
 
@@ -1887,6 +1985,10 @@ const MULTI_SECTIONS = [
   'CARACTERES FÍSICOS','CARACTERES FISICOS',
   'ANTES DA CENTRIFUGAÇÃO','ANTES DA CENTRIFUGACAO','ANTES DA CENTRIFUGAÇÃO',
   'APÓS A CENTRIFUGAÇÃO','APOS A CENTRIFUGACAO','APÓS A CENTRIFUGAÇÃO',
+  // Toxinas (multi-param qualitative)
+  'CLOSTRIDIUM DIFFICILE',
+  // Sub-seções de urina (variante HOC)
+  'ANÁLISE FÍSICO-QUÍMICO','ANALISE FISICO-QUIMICO',
 ];
 
 function isMultiHeader(line) {
@@ -1988,6 +2090,43 @@ function parseParamRow(line) {
   }
 
   return null;
+}
+
+// ======================================================================
+// QUALITATIVE RESULTS: status mapping for serologias, toxinas, etc.
+// ======================================================================
+const QUAL_STATUS = {
+  'NEGATIVO':'normal','NEGATIVA':'normal','NEGATIVOS':'normal',
+  'NÃO REAGENTE':'normal','NAO REAGENTE':'normal',
+  'NÃO DETECTADO':'normal','NAO DETECTADO':'normal',
+  'NÃO DETECTÁVEL':'normal','NAO DETECTAVEL':'normal',
+  'AUSENTE':'normal','AUSÊNCIA DE ANTICORPOS':'normal',
+  'NÃO IMUNE':'normal','NAO IMUNE':'normal',
+  'POSITIVO':'high','POSITIVA':'high',
+  'REAGENTE':'high',
+  'DETECTADO':'high','DETECTÁVEL':'high','DETECTAVEL':'high',
+  'IMUNE':'normal',
+  'INDETERMINADO':'low','INCONCLUSIVO':'low',
+};
+
+const QUAL_PATTERN = /^(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE)$/i;
+
+function qualStatus(txt) {
+  const u = txt.trim().toUpperCase().replace(/\s+/g,' ');
+  return QUAL_STATUS[u] || 'low';
+}
+
+// Parse qualitative row: "NAME : QUALITATIVE_VALUE  ref?"
+// For lines like "C. difficile Toxina A : NEGATIVO   Negativo"
+function parseQualRow(line) {
+  const t = line.trim();
+  const m = t.match(/^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\.\(\)\+\-\/]*?)[\s.:]+\s*(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE)(?:\s|$)/i);
+  if (!m) return null;
+  const name = m[1].trim();
+  if (name.length < 3 || name.length > 60) return null;
+  if (skipLine(name)) return null;
+  const val = m[2].trim();
+  return {name:normNameDisplay(name), value:0, valueStr:val, unit:'', refMin:null, refMax:null, isQualitative:true, status:qualStatus(val)};
 }
 
 // ======================================================================
@@ -2176,7 +2315,7 @@ function parsePDFText(text, format) {
     // SINGLE EXAM: detect exam name line (all-caps, no numbers, not a section)
     // Then look for "Resultado:" in next few lines
     // Allow "-" in name (e.g. "TGO -TRANSAMINASE OXALACETICA", "TGP - TRANSAMINASE PIRUVICA")
-    const isExamHeader = /^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ\s\(\)\/\-]*$/.test(line) &&
+    const isExamHeader = /^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ0-9\s\(\)\/\-,]*$/.test(line) &&
                          line.length > 3 && line.length < 60 &&
                          !isMultiHeader(line) &&
                          !/^(VALORES|VALOR|SÉRIE|ERITROGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI)/i.test(line);
@@ -2248,6 +2387,21 @@ function parsePDFText(text, format) {
       continue;
     }
 
+    // Match qualitative "Resultado: TEXT" (NÃO REAGENTE, REAGENTE, NEGATIVO, POSITIVO, etc.)
+    if (!inMulti && currentExamName) {
+      const qualResMatch = line.match(/[Rr]esultado[s]?\s*[.:>]?\s*:?\s*(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE)/i);
+      if (qualResMatch) {
+        const valStr = qualResMatch[1].trim();
+        const name = normNameDisplay(currentExamName);
+        if (!SKIP_NAMES.has(name.toUpperCase())) {
+          results.push({name, value:0, valueStr:valStr, unit:'', refMin:null, refMax:null, date, status:qualStatus(valStr), isQualitative:true});
+        }
+        currentExamName = '';
+        pendingResult = null;
+        continue;
+      }
+    }
+
     // CITOMED format: single line "EXAM_NAME : VALUE UNIT" with ref on next line
     if (format === 'CITOMED' || format === 'GENERIC') {
       const cm = line.match(/^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç\s\(\)\/]+?)\s*:\s*([−\-]?[0-9][0-9.,]*)\s+([a-zA-Zµ%\/~³^·]+)?$/);
@@ -2281,6 +2435,14 @@ function parsePDFText(text, format) {
         row.date = date;
         row.status = getStatus(row.value,row.refMin,row.refMax);
         if (!SKIP_NAMES.has(row.name.toUpperCase())) results.push(row);
+      } else {
+        // Try qualitative row (for toxinas, serologias in multi-param sections)
+        const qRow = parseQualRow(line);
+        if (qRow) {
+          if (inLiquor) qRow.name = _lcrName(qRow.name);
+          qRow.date = date;
+          if (!SKIP_NAMES.has(qRow.name.toUpperCase())) results.push(qRow);
+        }
       }
     }
   }
@@ -2338,6 +2500,9 @@ const SKIP_NAMES = new Set([
   'LOCAL DA PUNÇÃO','LOCAL DA PUNCAO',
   'PRESSÃO INICIAL','PRESSAO INICIAL','PRESSÃO FINAL','PRESSAO FINAL',
   'RETIRADO','COÁGULO','COAGULO',
+  // Headers de toxinas/sorologias
+  'CLOSTRIDIUM DIFFICILE','CLOSTRIDIUM DIFFICILE, PESQUISA DA TOXINA A E B',
+  'VALOR DE REFERÊNCIA','ANÁLISE FÍSICO-QUÍMICO','ANALISE FISICO-QUIMICO',
 ]);
 
 // ======================================================================
