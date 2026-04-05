@@ -2280,6 +2280,10 @@ function _lcrName(name) {
 }
 
 function parsePDFText(text, format) {
+  // ── DEBUG: log extracted text to console for diagnosis ──
+  console.log('─── parsePDFText INPUT ───');
+  console.log(text);
+  console.log('─── END INPUT ───');
   const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
   const results = [];
   const date = findDate(text, format) || new Date().toLocaleDateString('pt-BR');
@@ -2401,6 +2405,7 @@ function parsePDFText(text, format) {
 
     // Detect multi-param section header
     if (isMultiHeader(line)) {
+      console.log('[MULTI-HEADER]', JSON.stringify(line));
       inMulti = true;
       currentExamName = '';
       pendingResult = null;
@@ -2427,6 +2432,7 @@ function parsePDFText(text, format) {
                          !/^(VALORES|VALOR|SÉRIE|ERITROGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI)/i.test(line);
 
     if (isExamHeader) {
+      console.log('[EXAM-HEADER]', JSON.stringify(line));
       inMulti = false;  // Exit multi-param mode when a new single exam header is detected
       inLiquor = false; // Exit liquor context
       currentExamName = line.trim();
@@ -2529,10 +2535,12 @@ function parsePDFText(text, format) {
 
     // Multi-param row (hemograma, gasometria, líquor, etc.)
     if (inMulti) {
-      if (skipLine(line)) continue;
+      if (skipLine(line)) { console.log('[MULTI-SKIP]', line); continue; }
       // Check for end of section: blank or new section
       if (/^[-=*]+$/.test(line)) { inMulti=false; inLiquor=false; continue; }
+      console.log('[MULTI-ROW]', JSON.stringify(line));
       const row = parseParamRow(line);
+      console.log('[MULTI-RESULT]', row ? JSON.stringify(row) : 'null');
       if (row) {
         // Em contexto de líquor, renomeia parâmetros que conflitam com exames de sangue
         if (inLiquor) {
