@@ -16,8 +16,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <style>
 :root{--primary:#1a3a5c;--primary-dk:#122844;--primary-lt:#dbeeff;--primary-mid:#2563a8;--accent:#3b82c4;--accent-lt:#dbeeff;--danger:#dc2626;--success:#16a34a;--warn:#d97706;--g50:#f7f9fc;--g100:#eef2f7;--g200:#dde6f0;--g300:#c5d4e6;--g400:#94aec8;--g500:#6b8aab;--g600:#4a6d8c;--g700:#2f4f6e;--g800:#1a3a5c;--g900:#0f2236;--hi-bg:#fef2f2;--hi-tx:#b91c1c;--lo-bg:#eff6ff;--lo-tx:#1a3a5c;--r:8px;--sh:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);--shm:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.05);--shl:0 10px 15px rgba(0,0,0,.1),0 4px 6px rgba(0,0,0,.05)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1274,6 +1274,10 @@ function downloadLabPDF() {
   });
 
   // ── Gerar PDF real com jsPDF + AutoTable ──
+  if (!window.jspdf) {
+    toast('Biblioteca jsPDF não carregou. Verifique sua conexão.');
+    return;
+  }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
