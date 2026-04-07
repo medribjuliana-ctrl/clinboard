@@ -1684,9 +1684,9 @@ function parseRef(s) {
   if (m) return {refMin:pNum(m[1]),refMax:pNum(m[2])};
   m = s.match(/([0-9][0-9.,]*)\s+[aA]\s+([0-9][0-9.,]*)/);
   if (m) return {refMin:pNum(m[1]),refMax:pNum(m[2])};
-  m = s.match(/(?:[Ii]nferior\s+a|[Aa]té|<)\s*([0-9][0-9.,]*)/);
+  m = s.match(/(?:inferior\s+a|at[ée]|menor(?:\s+que)?|<)\s*([0-9][0-9.,]*)/i);
   if (m) return {refMin:0,refMax:pNum(m[1])};
-  m = s.match(/(?:[Ss]uperior\s+a|>)\s*([0-9][0-9.,]*)/);
+  m = s.match(/(?:superior\s+a|maior(?:\s+que)?|>)\s*([0-9][0-9.,]*)/i);
   if (m) return {refMin:pNum(m[1]),refMax:null};
   return {refMin:null,refMax:null};
 }
@@ -1776,7 +1776,7 @@ const NAME_MAP = {
   'TGO (AST)':'TGO (AST)','TGP (ALT)':'TGP (ALT)',
   'ATIVIDADE DA PROTROMBINA':'TP - Atividade','ATIVIDADE (%)':'TP - Atividade',
   'ATIVIDADE PROTOMBINA':'TP - Atividade','ATIVIDADE DA PROTOMBINA':'TP - Atividade',
-  'ATIVIDADE PROTROMBINA':'TP - Atividade',
+  'ATIVIDADE PROTROMBINA':'TP - Atividade','ATIVIDADE':'TP - Atividade',
   'TAP (%)':'TP - Atividade','TAP':'TP (segundos)','RNI':'INR','INR':'INR',
   'TEMPO DE PROTROMBINA':'TP (segundos)','TEMPO DE PROTOMBINA':'TP (segundos)',
   'TP':'TP - Atividade',
@@ -2060,12 +2060,12 @@ function normNameDisplay(raw) {
 
 // Lines to skip
 function skipLine(line) {
-  return /^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido\s|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica|Referência\s|Referência:|Refer[êe]ncia\s+Adultos|Recém-Nascidos:|Rec[ée]m-Nascidos:|Hora\s+da\s+[Cc]oleta|Evolução\s+do\s+paciente|Notas:|Material\s+biológico|Condições\s+do\s+Paciente|Local\s+da\s+pun[çc][ãa]o|Press[ãa]o\s+(Inicial|Final)|Adultos:|ADULTOS:|Resultado\s*$)/i.test(line.trim());
+  return /^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido\s|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica|Referência\s|Referência:|Refer[êe]ncia\s+Adultos|Recém-Nascidos:|Rec[ée]m-Nascidos:|Hora\s+da\s+[Cc]oleta|Evolução\s+do\s+paciente|Notas:|Material\s+biológico|Condições\s+do\s+Paciente|Local\s+da\s+pun[çc][ãa]o|Press[ãa]o\s+(Inicial|Final)|Adultos:|ADULTOS:|Resultado\s*$|Resultado\s+Anterior|VALOR\s+(DE\s+REFER|CR[ÍI]TICO)|VALORES\s+DE\s+REFER|MENOS\s+DE\s+\d|BILIRRUBINA\s+TOTAL\s*\(|BILIRRUBINA\s+(DIRETA|INDIRETA|TOTAL)\s*:\s*[A-Za-z]|GLOBULINA:|RELA[ÇC][ÃA]O\s+A\/G:)/i.test(line.trim());
 }
 
 // Known multi-parameter section headers
 const MULTI_SECTIONS = [
-  'HEMOGRAMA','ERITROGRAMA','LEUCOGRAMA','PLAQUETOGRAMA','SÉRIE ERITROCITÁRIA','SÉRIE LEUCOCITÁRIA','SÉRIE PLAQUETÁRIA',
+  'HEMOGRAMA','ERITROGRAMA','ERITOGRAMA','LEUCOGRAMA','PLAQUETOGRAMA','SÉRIE ERITROCITÁRIA','SÉRIE LEUCOCITÁRIA','SÉRIE PLAQUETÁRIA',
   'GASOMETRIA ARTERIAL','GASOMETRIA VENOSA','GASOMETRIA','COAGULOGRAMA','ROTINA DE URINA','ROTINA DE LÍQUOR','URINÁLISE',
   'LÍQUOR QUIMIOCITOLOGICO','LÍQUOR QUIMIOCITOLÓGICO','LÍQUOR, ROTINA','LÍQUOR',
   'CITOMETRIA','CITOLOGIA',
@@ -2428,7 +2428,7 @@ function parsePDFText(text, format) {
     const isExamHeader = /^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\/\-,]*$/.test(line) &&
                          line.length > 3 && line.length < 60 &&
                          !isMultiHeader(line) &&
-                         !/^(VALORES|VALOR|SÉRIE|ERITROGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI|RESULTADO[S]?|REFER[ÊE]NCIA[S]?|IDADE\s|SEXO\s)/i.test(line);
+                         !/^(VALORES|VALOR|SÉRIE|ERITR?OGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI|RESULTADO[S]?|REFER[ÊE]NCIA[S]?|IDADE\s|SEXO\s|ELEMENTOS\s+ANORMAIS|SEDIMENTOSCOPIA)/i.test(line);
 
     if (isExamHeader) {
       inMulti = false;  // Exit multi-param mode when a new single exam header is detected
@@ -2475,7 +2475,7 @@ function parsePDFText(text, format) {
             if (rngM) { ref = `${rngM[1]} - ${rngM[2]}`; break; }
             const rngA = lj.match(/([0-9][0-9.,]*)\s+[aA]\s+([0-9][0-9.,]*)/);
             if (rngA) { ref = `${rngA[1]} a ${rngA[2]}`; break; }
-            const ltM = lj.match(/(?:[Aa]té|<)\s*([0-9][0-9.,]*)/);
+            const ltM = lj.match(/(?:at[ée]|inferior\s+a|menor(?:\s+que)?|<)\s*([0-9][0-9.,]*)/i);
             if (ltM) { ref = `< ${ltM[1]}`; break; }
           }
           // Inline ref on result line itself
