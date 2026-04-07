@@ -1,0 +1,6 @@
+{
+  "lab": "PIOX",
+  "description": "Hospital São Pio X",
+  "fingerprints": ["S[ÃA]O\\s+PIO\\s*X", "PIOX", "Pio\\s*X"],
+  "cases": []
+}

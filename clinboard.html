@@ -255,7 +255,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
 <!-- HEADER -->
 <header class="app-header">
-  <div class="app-logo" onclick="goHome()">
+  <div class="app-logo" onclick="goHome()" ondblclick="openLabAdmin(event)">
     <svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="cbGrad" x1="0" y1="0" x2="1" y2="1">
@@ -498,6 +498,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-confirm')">Cancelar</button>
       <button class="btn btn-danger" id="conf-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lab Admin / Test Harness modal — abre via duplo-clique no logo -->
+<div class="modal-overlay" id="modal-lab-admin" role="dialog" aria-modal="true" aria-labelledby="lab-admin-title">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-hdr">
+      <span class="modal-title" id="lab-admin-title">🧪 Lab Admin — Parser & Fixtures</span>
+      <button class="modal-close" onclick="closeModal('modal-lab-admin')" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--g700);margin:0 0 12px">
+        Painel de desenvolvimento para testar o parser de PDF contra fixtures de regressão.
+        Cada laboratório tem sua própria pasta em <code>/fixtures/&lt;lab&gt;/</code>.
+      </p>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <button class="btn btn-primary btn-sm" onclick="adminRunTests()">▶ Rodar todos os testes</button>
+        <label class="btn btn-outline btn-sm" style="cursor:pointer">
+          📥 Capturar fixture do PDF
+          <input type="file" accept=".pdf" id="admin-capture-file" style="display:none" onchange="adminCaptureFixture(event)">
+        </label>
+        <button class="btn btn-outline btn-sm" onclick="adminListStrategies()">📋 Estratégias registradas</button>
+      </div>
+
+      <div id="admin-output" style="background:var(--g100);border:1px solid var(--g200);border-radius:8px;padding:12px;font-family:ui-monospace,monospace;font-size:12px;max-height:380px;overflow:auto;white-space:pre-wrap;color:var(--g800)">
+        Aguardando ação…
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-lab-admin')">Fechar</button>
     </div>
   </div>
 </div>
@@ -2593,6 +2625,311 @@ function parsePDFText(text, format) {
   });
 }
 
+// =============================================================================
+// LabStrategy / LabRegistry (Phase 1 — infraestrutura, sem mudança de comportamento)
+// =============================================================================
+//
+// Cada estratégia representa o parser de um laboratório específico. A migração
+// é feita laboratório-por-laboratório (HOC, PioX, HUGO, Citomed) com fixtures
+// em /fixtures/<lab>/ servindo como testes de regressão.
+//
+// Interface:
+//   {
+//     id: string,                           // ex: 'HOC', 'PIOX', 'GENERIC'
+//     description: string,
+//     fingerprint(text) → number,           // 0 = não reconhece; >0 = score (maior vence)
+//     parse(text) → results[],              // mesma forma de parsePDFText
+//   }
+//
+// O GenericLab abaixo encapsula o parsePDFText atual SEM mudança de comportamento.
+// Estratégias específicas serão extraídas em Phase 2.
+
+const LabRegistry = {
+  strategies: [],
+  register(strategy) {
+    if (!strategy || !strategy.id || typeof strategy.parse !== 'function') {
+      console.warn('LabRegistry: estratégia inválida', strategy);
+      return;
+    }
+    // Substitui se já existe (hot-reload friendly)
+    const idx = this.strategies.findIndex(s => s.id === strategy.id);
+    if (idx >= 0) this.strategies[idx] = strategy;
+    else this.strategies.push(strategy);
+  },
+  detect(text) {
+    let best = null;
+    let bestScore = 0;
+    for (const s of this.strategies) {
+      const score = s.fingerprint ? (s.fingerprint(text) || 0) : 0;
+      if (score > bestScore) { bestScore = score; best = s; }
+    }
+    // Fallback explícito ao GenericLab se nada bater
+    return best || this.strategies.find(s => s.id === 'GENERIC') || null;
+  },
+  run(text) {
+    const lab = this.detect(text);
+    if (!lab) {
+      console.warn('LabRegistry: nenhuma estratégia disponível');
+      return { lab: null, results: [] };
+    }
+    const results = lab.parse(text);
+    return { lab, results };
+  },
+  list() { return this.strategies.slice(); }
+};
+
+// -----------------------------------------------------------------------------
+// GenericLab — wrapper de zero impacto sobre parsePDFText() existente.
+// É a estratégia de fallback. Reproduz exatamente o comportamento atual:
+// detectFormat() identifica o formato e parsePDFText() faz o parse.
+// -----------------------------------------------------------------------------
+const GenericLab = {
+  id: 'GENERIC',
+  description: 'Parser genérico (comportamento atual de parsePDFText)',
+  // Score baixíssimo: só ganha se nenhuma outra estratégia reconhecer o texto.
+  fingerprint(text) { return 0.01; },
+  parse(text) {
+    const format = detectFormat(text);
+    return parsePDFText(text, format);
+  }
+};
+LabRegistry.register(GenericLab);
+
+// =============================================================================
+// Test harness — runLabFixtures()
+// =============================================================================
+//
+// Carrega ./fixtures/<lab>/index.json para cada laboratório registrado,
+// executa cada caso (extrai PDF → parser → compara com expected.json) e
+// retorna um relatório estruturado.
+//
+// Uso:
+//   const report = await runLabFixtures();
+//   console.table(report.summary);
+//
+// Cada caso em index.json:
+//   { id: '1020028928', description: '...', tags: [...] }
+//
+// E espera os arquivos:
+//   fixtures/<lab>/<id>/source.pdf      ← PDF de origem
+//   fixtures/<lab>/<id>/expected.json   ← snapshot do array retornado por parse()
+
+async function runLabFixtures(opts = {}) {
+  const baseDir = opts.baseDir || './fixtures';
+  const labs = opts.labs || LabRegistry.list().map(s => s.id.toLowerCase());
+  const report = { startedAt: new Date().toISOString(), labs: {}, summary: { total: 0, passed: 0, failed: 0, errored: 0 } };
+
+  for (const labId of labs) {
+    const labDir = `${baseDir}/${labId}`;
+    let index;
+    try {
+      const r = await fetch(`${labDir}/index.json`);
+      if (!r.ok) { report.labs[labId] = { error: `index.json não encontrado (${r.status})`, cases: [] }; continue; }
+      index = await r.json();
+    } catch (e) {
+      report.labs[labId] = { error: `falha ao carregar index.json: ${e.message}`, cases: [] };
+      continue;
+    }
+
+    const labReport = { lab: index.lab || labId, description: index.description || '', cases: [] };
+
+    for (const c of (index.cases || [])) {
+      const caseDir = `${labDir}/${c.id}`;
+      const caseResult = { id: c.id, description: c.description || '', status: 'pending', diffs: [] };
+      report.summary.total++;
+      try {
+        // 1) baixa o PDF
+        const pdfRes = await fetch(`${caseDir}/source.pdf`);
+        if (!pdfRes.ok) throw new Error(`source.pdf não encontrado (${pdfRes.status})`);
+        const blob = await pdfRes.blob();
+        const file = new File([blob], 'source.pdf', { type: 'application/pdf' });
+
+        // 2) extrai texto
+        const text = await extractPDFText(file);
+
+        // 3) roda o parser via registry
+        const { lab, results } = LabRegistry.run(text);
+        caseResult.detectedLab = lab ? lab.id : null;
+
+        // 4) carrega expected
+        const expRes = await fetch(`${caseDir}/expected.json`);
+        if (!expRes.ok) throw new Error(`expected.json não encontrado (${expRes.status})`);
+        const expected = await expRes.json();
+
+        // 5) compara
+        const diffs = diffParseResults(expected, results);
+        caseResult.diffs = diffs;
+        caseResult.status = diffs.length === 0 ? 'pass' : 'fail';
+        if (caseResult.status === 'pass') report.summary.passed++;
+        else report.summary.failed++;
+      } catch (e) {
+        caseResult.status = 'error';
+        caseResult.error = e.message;
+        report.summary.errored++;
+      }
+      labReport.cases.push(caseResult);
+    }
+
+    report.labs[labId] = labReport;
+  }
+
+  report.finishedAt = new Date().toISOString();
+  return report;
+}
+
+// Compara expected vs actual de forma tolerante a ordem.
+// Match por (name + date). Reporta divergências em campos relevantes.
+function diffParseResults(expected, actual) {
+  const diffs = [];
+  const norm = r => `${(r.name||'').trim()}|${(r.date||'').trim()}`;
+
+  const expByKey = new Map();
+  for (const r of expected) expByKey.set(norm(r), r);
+  const actByKey = new Map();
+  for (const r of actual) actByKey.set(norm(r), r);
+
+  // Faltantes
+  for (const [k, e] of expByKey) {
+    if (!actByKey.has(k)) {
+      diffs.push({ kind: 'missing', key: k, expected: e });
+    }
+  }
+  // Extras
+  for (const [k, a] of actByKey) {
+    if (!expByKey.has(k)) {
+      diffs.push({ kind: 'extra', key: k, actual: a });
+    }
+  }
+  // Campos divergentes
+  const fields = ['value', 'unit', 'ref', 'refMin', 'refMax', 'known'];
+  for (const [k, e] of expByKey) {
+    const a = actByKey.get(k);
+    if (!a) continue;
+    for (const f of fields) {
+      const ev = e[f], av = a[f];
+      const eq = (ev == null && av == null) || String(ev) === String(av);
+      if (!eq) diffs.push({ kind: 'field', key: k, field: f, expected: ev, actual: av });
+    }
+  }
+  return diffs;
+}
+
+// Helper: gera um expected.json a partir de um File (PDF) — usado pelo painel admin
+// para capturar fixtures novas.
+async function captureFixtureFromPDF(file) {
+  const text = await extractPDFText(file);
+  const { lab, results } = LabRegistry.run(text);
+  return {
+    capturedAt: new Date().toISOString(),
+    detectedLab: lab ? lab.id : null,
+    results
+  };
+}
+
+// =============================================================================
+// Lab Admin — UI handlers
+// =============================================================================
+function openLabAdmin(ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  if (typeof openModal === 'function') openModal('modal-lab-admin');
+  else { const m = document.getElementById('modal-lab-admin'); if (m) m.classList.add('open'); }
+  adminListStrategies();
+}
+
+function adminLog(text, replace) {
+  const out = document.getElementById('admin-output');
+  if (!out) return;
+  if (replace) out.textContent = text;
+  else out.textContent += '\n' + text;
+  out.scrollTop = out.scrollHeight;
+}
+
+function adminListStrategies() {
+  const lines = ['Estratégias registradas no LabRegistry:', ''];
+  for (const s of LabRegistry.list()) {
+    lines.push(`  • ${s.id}  —  ${s.description || '(sem descrição)'}`);
+  }
+  lines.push('');
+  lines.push('Em Phase 1, apenas GenericLab está ativo (delega para parsePDFText).');
+  lines.push('Phase 2: extrair HOCLab, PioXLab, HUGOLab, CitomedLab.');
+  adminLog(lines.join('\n'), true);
+}
+
+async function adminRunTests() {
+  adminLog('Rodando fixtures…\n', true);
+  let report;
+  try {
+    report = await runLabFixtures();
+  } catch (e) {
+    adminLog('❌ Erro ao rodar harness: ' + e.message);
+    return;
+  }
+  const lines = [];
+  lines.push(`Iniciado: ${report.startedAt}`);
+  lines.push(`Concluído: ${report.finishedAt}`);
+  lines.push('');
+  const s = report.summary;
+  lines.push(`Resumo: ${s.passed}/${s.total} passaram, ${s.failed} falharam, ${s.errored} erros`);
+  lines.push('─'.repeat(60));
+  for (const labId of Object.keys(report.labs)) {
+    const lab = report.labs[labId];
+    lines.push('');
+    lines.push(`📁 ${labId.toUpperCase()} — ${lab.description || ''}`);
+    if (lab.error) { lines.push(`   ⚠ ${lab.error}`); continue; }
+    if (!lab.cases || lab.cases.length === 0) {
+      lines.push('   (nenhum caso de teste — adicione fixtures em fixtures/' + labId + '/)');
+      continue;
+    }
+    for (const c of lab.cases) {
+      const icon = c.status === 'pass' ? '✅' : c.status === 'fail' ? '❌' : '⚠';
+      lines.push(`   ${icon} [${c.id}] ${c.description || ''}`);
+      if (c.detectedLab) lines.push(`       detectado: ${c.detectedLab}`);
+      if (c.error) lines.push(`       erro: ${c.error}`);
+      if (c.diffs && c.diffs.length) {
+        for (const d of c.diffs.slice(0, 10)) {
+          if (d.kind === 'missing') lines.push(`       — faltando: ${d.key}`);
+          else if (d.kind === 'extra') lines.push(`       + extra: ${d.key}`);
+          else if (d.kind === 'field') lines.push(`       ≠ ${d.key} → ${d.field}: esperado=${JSON.stringify(d.expected)} atual=${JSON.stringify(d.actual)}`);
+        }
+        if (c.diffs.length > 10) lines.push(`       … e mais ${c.diffs.length - 10} diferenças`);
+      }
+    }
+  }
+  adminLog(lines.join('\n'), true);
+  console.log('[Lab Admin] Relatório completo:', report);
+}
+
+async function adminCaptureFixture(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  adminLog(`Capturando fixture de "${file.name}"…\n`, true);
+  try {
+    const fx = await captureFixtureFromPDF(file);
+    const json = JSON.stringify(fx.results, null, 2);
+    adminLog(`Lab detectado: ${fx.detectedLab}`);
+    adminLog(`Resultados extraídos: ${fx.results.length}`);
+    adminLog('');
+    adminLog('expected.json (copie e salve em fixtures/<lab>/<id>/expected.json):');
+    adminLog('─'.repeat(60));
+    adminLog(json);
+    // Disponibiliza para download
+    try {
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (file.name.replace(/\.pdf$/i,'') || 'fixture') + '.expected.json';
+      a.textContent = '⬇ baixar expected.json';
+      a.style.cssText = 'display:inline-block;margin-top:8px;color:var(--brand);text-decoration:underline';
+      document.getElementById('admin-output').appendChild(document.createElement('br'));
+      document.getElementById('admin-output').appendChild(a);
+    } catch(_) {}
+  } catch (e) {
+    adminLog('❌ Erro: ' + e.message);
+  }
+  ev.target.value = '';
+}
+
 const SKIP_NAMES = new Set([
   'RESULTADO','REFERÊNCIA','VALOR DE REFERÊNCIA','VALORES DE REFERÊNCIA','VALORES ABSOLUTOS',
   'MATERIAL','MÉTODO','MÉTODO','COLETADO','LIBERADO','HASH','IMPRESSO',
@@ -2828,7 +3165,10 @@ async function processFile(file) {
     const text = await extractPDFText(file);
     document.getElementById('proc-status').textContent = 'Analisando resultados...';
     const format = detectFormat(text);
-    const results = parsePDFText(text, format);
+    // Phase 1: roteia via LabRegistry. Por enquanto só GenericLab está registrado,
+    // que delega para parsePDFText(text, format). Comportamento idêntico ao anterior.
+    const { lab: detectedLab, results } = LabRegistry.run(text);
+    if (detectedLab) console.debug('[clinBoard] Lab detectado:', detectedLab.id);
     const date = findDate(text, format);
     if (!date) toast('Data de coleta não encontrada no PDF — verifique a data antes de salvar.', 'warn');
     if (results.length === 0) {

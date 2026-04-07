@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v12
-const CACHE = 'clinboard-v13';
+// clinBoard Service Worker — v16 (Phase 1: LabRegistry + fixtures harness)
+const CACHE = 'clinboard-v17';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [
@@ -7,8 +7,8 @@ const ASSETS = [
   './manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'
+  'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',
+  'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js'
 ];
 
 // Instala e faz cache dos assets essenciais
