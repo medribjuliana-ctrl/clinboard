@@ -516,13 +516,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       </p>
 
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-        <button class="btn btn-primary btn-sm" onclick="adminRunTests()">▶ Rodar todos os testes</button>
+        <label class="btn btn-primary btn-sm" style="cursor:pointer">
+          📁 Selecionar pasta de fixtures e rodar
+          <input type="file" id="admin-folder-picker" webkitdirectory directory multiple style="display:none" onchange="adminRunTestsFromFolder(event)">
+        </label>
+        <button class="btn btn-outline btn-sm" onclick="adminRunTests()">▶ Rodar via fetch (servidor local)</button>
         <label class="btn btn-outline btn-sm" style="cursor:pointer">
           📥 Capturar fixture do PDF
           <input type="file" accept=".pdf" id="admin-capture-file" style="display:none" onchange="adminCaptureFixture(event)">
         </label>
         <button class="btn btn-outline btn-sm" onclick="adminListStrategies()">📋 Estratégias registradas</button>
       </div>
+      <p style="font-size:12px;color:var(--g600);margin:0 0 12px;padding:8px;background:var(--g100);border-radius:6px;border-left:3px solid var(--brand)">
+        💡 <strong>Modo recomendado:</strong> "📁 Selecionar pasta de fixtures" — escolha a pasta <code>fixtures/</code> do seu disco. Os PDFs ficam só na sua máquina (LGPD).
+      </p>
 
       <div id="admin-output" style="background:var(--g100);border:1px solid var(--g200);border-radius:8px;padding:12px;font-family:ui-monospace,monospace;font-size:12px;max-height:380px;overflow:auto;white-space:pre-wrap;color:var(--g800)">
         Aguardando ação…
@@ -2716,33 +2723,53 @@ LabRegistry.register(GenericLab);
 
 async function runLabFixtures(opts = {}) {
   const baseDir = opts.baseDir || './fixtures';
+  const fileMap = opts.fileMap || null;  // Map<relativePath, File> — modo "pasta local"
   const labs = opts.labs || LabRegistry.list().map(s => s.id.toLowerCase());
   const report = { startedAt: new Date().toISOString(), labs: {}, summary: { total: 0, passed: 0, failed: 0, errored: 0 } };
 
+  // Helpers de I/O — funcionam em 2 modos:
+  //   (a) fileMap presente → lê do Map<path, File> (pasta local via webkitdirectory)
+  //   (b) sem fileMap     → fetch() do servidor (modo dev local)
+  async function loadJsonAt(relPath) {
+    if (fileMap) {
+      const f = fileMap.get(relPath);
+      if (!f) throw new Error(`não encontrado na pasta selecionada: ${relPath}`);
+      const txt = await f.text();
+      return JSON.parse(txt);
+    }
+    const r = await fetch(`${baseDir}/${relPath}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status} em ${relPath}`);
+    return await r.json();
+  }
+  async function loadPdfAt(relPath) {
+    if (fileMap) {
+      const f = fileMap.get(relPath);
+      if (!f) throw new Error(`não encontrado na pasta selecionada: ${relPath}`);
+      return f;
+    }
+    const r = await fetch(`${baseDir}/${relPath}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status} em ${relPath}`);
+    const blob = await r.blob();
+    return new File([blob], 'source.pdf', { type: 'application/pdf' });
+  }
+
   for (const labId of labs) {
-    const labDir = `${baseDir}/${labId}`;
     let index;
     try {
-      const r = await fetch(`${labDir}/index.json`);
-      if (!r.ok) { report.labs[labId] = { error: `index.json não encontrado (${r.status})`, cases: [] }; continue; }
-      index = await r.json();
+      index = await loadJsonAt(`${labId}/index.json`);
     } catch (e) {
-      report.labs[labId] = { error: `falha ao carregar index.json: ${e.message}`, cases: [] };
+      report.labs[labId] = { error: `index.json: ${e.message}`, cases: [] };
       continue;
     }
 
     const labReport = { lab: index.lab || labId, description: index.description || '', cases: [] };
 
     for (const c of (index.cases || [])) {
-      const caseDir = `${labDir}/${c.id}`;
       const caseResult = { id: c.id, description: c.description || '', status: 'pending', diffs: [] };
       report.summary.total++;
       try {
-        // 1) baixa o PDF
-        const pdfRes = await fetch(`${caseDir}/source.pdf`);
-        if (!pdfRes.ok) throw new Error(`source.pdf não encontrado (${pdfRes.status})`);
-        const blob = await pdfRes.blob();
-        const file = new File([blob], 'source.pdf', { type: 'application/pdf' });
+        // 1) carrega o PDF
+        const file = await loadPdfAt(`${labId}/${c.id}/source.pdf`);
 
         // 2) extrai texto
         const text = await extractPDFText(file);
@@ -2750,14 +2777,15 @@ async function runLabFixtures(opts = {}) {
         // 3) roda o parser via registry
         const { lab, results } = LabRegistry.run(text);
         caseResult.detectedLab = lab ? lab.id : null;
+        caseResult.actual = results;
 
         // 4) carrega expected
-        const expRes = await fetch(`${caseDir}/expected.json`);
-        if (!expRes.ok) throw new Error(`expected.json não encontrado (${expRes.status})`);
-        const expected = await expRes.json();
+        const expected = await loadJsonAt(`${labId}/${c.id}/expected.json`);
+        // Suporta tanto formato direto (array) quanto encapsulado ({results: [...]})
+        const expectedResults = Array.isArray(expected) ? expected : (expected.results || []);
 
         // 5) compara
-        const diffs = diffParseResults(expected, results);
+        const diffs = diffParseResults(expectedResults, results);
         caseResult.diffs = diffs;
         caseResult.status = diffs.length === 0 ? 'pass' : 'fail';
         if (caseResult.status === 'pass') report.summary.passed++;
@@ -2855,15 +2883,62 @@ function adminListStrategies() {
   adminLog(lines.join('\n'), true);
 }
 
-async function adminRunTests() {
-  adminLog('Rodando fixtures…\n', true);
-  let report;
-  try {
-    report = await runLabFixtures();
-  } catch (e) {
-    adminLog('❌ Erro ao rodar harness: ' + e.message);
+// Constrói um Map<relativePath, File> a partir de uma FileList vinda de
+// <input webkitdirectory>. Detecta automaticamente o segmento "fixtures/"
+// no caminho relativo e o remove, normalizando os paths para "<lab>/<id>/...".
+function buildFixtureFileMap(fileList) {
+  const map = new Map();
+  if (!fileList || fileList.length === 0) return map;
+  // webkitRelativePath vem como "fixtures/hoc/pdf1/source.pdf" se a pasta selecionada
+  // foi "fixtures", ou só "hoc/pdf1/source.pdf" se a pasta selecionada já foi "hoc/" ou
+  // qualquer outra. Detectamos o prefixo a remover olhando o primeiro segmento.
+  // Se o primeiro segmento bater com algum lab id registrado, NÃO removemos.
+  // Senão, removemos o primeiro segmento (provavelmente "fixtures").
+  const labIds = new Set(LabRegistry.list().map(s => s.id.toLowerCase()));
+  let stripFirst = null;
+  for (const f of fileList) {
+    const rel = f.webkitRelativePath || f.name;
+    const segs = rel.split('/');
+    if (stripFirst === null) {
+      stripFirst = !labIds.has((segs[0] || '').toLowerCase());
+    }
+    const normalized = stripFirst ? segs.slice(1).join('/') : rel;
+    if (normalized) map.set(normalized, f);
+  }
+  return map;
+}
+
+async function adminRunTestsFromFolder(ev) {
+  const files = ev.target.files;
+  if (!files || files.length === 0) { adminLog('Nenhuma pasta selecionada.', true); return; }
+  adminLog(`Lendo pasta selecionada (${files.length} arquivos)…\n`, true);
+  const fileMap = buildFixtureFileMap(files);
+  // Mostra um preview dos arquivos relevantes pra debugging
+  const indexFiles = [...fileMap.keys()].filter(k => k.endsWith('/index.json'));
+  const pdfFiles = [...fileMap.keys()].filter(k => k.endsWith('.pdf'));
+  const expectedFiles = [...fileMap.keys()].filter(k => k.endsWith('expected.json'));
+  adminLog(`  • ${indexFiles.length} index.json: ${indexFiles.join(', ') || '(nenhum)'}`);
+  adminLog(`  • ${pdfFiles.length} source.pdf encontrados`);
+  adminLog(`  • ${expectedFiles.length} expected.json encontrados`);
+  adminLog('');
+  if (indexFiles.length === 0) {
+    adminLog('⚠ Nenhum index.json encontrado. Verifique se selecionou a pasta certa (deve ser "fixtures" ou conter pastas como "hoc/", "piox/" etc.).');
+    ev.target.value = '';
     return;
   }
+  let report;
+  try {
+    report = await runLabFixtures({ fileMap });
+  } catch (e) {
+    adminLog('❌ Erro ao rodar harness: ' + e.message);
+    ev.target.value = '';
+    return;
+  }
+  renderHarnessReport(report);
+  ev.target.value = '';
+}
+
+function renderHarnessReport(report) {
   const lines = [];
   lines.push(`Iniciado: ${report.startedAt}`);
   lines.push(`Concluído: ${report.finishedAt}`);
@@ -2897,6 +2972,18 @@ async function adminRunTests() {
   }
   adminLog(lines.join('\n'), true);
   console.log('[Lab Admin] Relatório completo:', report);
+}
+
+async function adminRunTests() {
+  adminLog('Rodando fixtures via fetch (modo servidor local)…\n', true);
+  let report;
+  try {
+    report = await runLabFixtures();
+  } catch (e) {
+    adminLog('❌ Erro ao rodar harness: ' + e.message);
+    return;
+  }
+  renderHarnessReport(report);
 }
 
 async function adminCaptureFixture(ev) {
