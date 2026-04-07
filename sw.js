@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v18 (Phase 1.2: diagnóstico melhor do harness + tolerância a maiúsculas)
-const CACHE = 'clinboard-v19';
+// clinBoard Service Worker — v19 (Phase 1.3: harness descobre labs do fileMap, não do registry)
+const CACHE = 'clinboard-v20';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

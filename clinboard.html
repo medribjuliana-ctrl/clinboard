@@ -2724,7 +2724,27 @@ LabRegistry.register(GenericLab);
 async function runLabFixtures(opts = {}) {
   const baseDir = opts.baseDir || './fixtures';
   const fileMap = opts.fileMap || null;  // Map<relativePath, File> — modo "pasta local"
-  const labs = opts.labs || LabRegistry.list().map(s => s.id.toLowerCase());
+  // Descoberta de labs:
+  //   1. Se opts.labs foi passado, usa essa lista
+  //   2. Se temos fileMap, descobrimos os labs olhando quais subpastas têm index.json
+  //      (assim funciona mesmo pra labs ainda não registrados como estratégia)
+  //   3. Senão (modo fetch), tentamos uma lista de labs conhecidos
+  let labs = opts.labs;
+  if (!labs) {
+    if (fileMap) {
+      const labSet = new Set();
+      for (const k of fileMap.keys()) {
+        const m = k.match(/^([^\/]+)\/index\.json$/i);
+        if (m) labSet.add(m[1].toLowerCase());
+      }
+      labs = [...labSet];
+    } else {
+      // Modo fetch: tenta tanto labs registrados quanto pastas conhecidas
+      const known = ['hoc','piox','hugo','citomed','biocentro','generic'];
+      const registered = LabRegistry.list().map(s => s.id.toLowerCase());
+      labs = [...new Set([...registered, ...known])];
+    }
+  }
   const report = { startedAt: new Date().toISOString(), labs: {}, summary: { total: 0, passed: 0, failed: 0, errored: 0 } };
 
   // Helpers de I/O — funcionam em 2 modos:
