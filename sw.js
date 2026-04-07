@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v17 (Phase 1.1: harness lê fixtures de pasta local via webkitdirectory)
-const CACHE = 'clinboard-v18';
+// clinBoard Service Worker — v18 (Phase 1.2: diagnóstico melhor do harness + tolerância a maiúsculas)
+const CACHE = 'clinboard-v19';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

@@ -2913,16 +2913,29 @@ async function adminRunTestsFromFolder(ev) {
   if (!files || files.length === 0) { adminLog('Nenhuma pasta selecionada.', true); return; }
   adminLog(`Lendo pasta selecionada (${files.length} arquivos)…\n`, true);
   const fileMap = buildFixtureFileMap(files);
-  // Mostra um preview dos arquivos relevantes pra debugging
-  const indexFiles = [...fileMap.keys()].filter(k => k.endsWith('/index.json'));
-  const pdfFiles = [...fileMap.keys()].filter(k => k.endsWith('.pdf'));
-  const expectedFiles = [...fileMap.keys()].filter(k => k.endsWith('expected.json'));
+  // Preview dos arquivos relevantes — busca tolerante a .txt acidental e variações de caixa
+  const allKeys = [...fileMap.keys()];
+  const indexFiles = allKeys.filter(k => /(^|\/)index\.json$/i.test(k));
+  const pdfFiles = allKeys.filter(k => /\.pdf$/i.test(k));
+  const expectedFiles = allKeys.filter(k => /expected\.json$/i.test(k));
   adminLog(`  • ${indexFiles.length} index.json: ${indexFiles.join(', ') || '(nenhum)'}`);
   adminLog(`  • ${pdfFiles.length} source.pdf encontrados`);
   adminLog(`  • ${expectedFiles.length} expected.json encontrados`);
   adminLog('');
+
+  // Diagnóstico extra: lista TODOS os arquivos da pasta. Se o usuário criou
+  // algum arquivo errado (ex: index.json.txt), aparece aqui.
+  adminLog('Lista completa de arquivos detectados na pasta:');
+  for (const k of allKeys.sort()) adminLog('   ' + k);
+  adminLog('');
+
   if (indexFiles.length === 0) {
-    adminLog('⚠ Nenhum index.json encontrado. Verifique se selecionou a pasta certa (deve ser "fixtures" ou conter pastas como "hoc/", "piox/" etc.).');
+    adminLog('⚠ Nenhum index.json encontrado.');
+    adminLog('   Causas mais comuns:');
+    adminLog('   1. O Bloco de Notas adicionou .txt ao final → arquivo virou "index.json.txt"');
+    adminLog('   2. O arquivo está fora da pasta do laboratório (ex: solto no nível raiz)');
+    adminLog('   3. A pasta selecionada não contém uma subpasta de laboratório (hoc, piox, etc)');
+    adminLog('   Confira a lista acima — o nome real do arquivo aparece lá.');
     ev.target.value = '';
     return;
   }
