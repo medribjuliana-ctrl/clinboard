@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v31 (Phase 6: Bucket 1 + Bucket 3 — single-line dots + \s+)
-const CACHE = 'clinboard-v31';
+// clinBoard Service Worker — v32 (Phase 6b: isMultiHeader value-row guard + reLt spacing + refMin negativo)
+const CACHE = 'clinboard-v32';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

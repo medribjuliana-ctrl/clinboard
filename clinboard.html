@@ -2155,7 +2155,13 @@ const MULTI_SECTIONS = [
 ];
 
 function isMultiHeader(line) {
-  const t = line.trim().toUpperCase();
+  const raw = line.trim();
+  // Phase 6 (Bug C): se a linha tem ":" seguido de número, é uma value row,
+  // não um cabeçalho de seção. Sem isso, "Tempo de Protrombina : 15,93 SEG"
+  // do HOC era classificado como header (porque "TEMPO DE PROTROMBINA" está
+  // em MULTI_SECTIONS pro Pio X) e o valor sumia.
+  if (/:\s*[−\-]?\d/.test(raw)) return false;
+  const t = raw.toUpperCase();
   if (MULTI_SECTIONS.some(s => t === s || t.startsWith(s))) return true;
   const extra = _currentLabMultiExtra;
   if (extra && extra.some(s => t === s || t.startsWith(s))) return true;
@@ -2218,8 +2224,9 @@ function parseParamRow(line) {
   //         "Hemácias......: 4,48 tera/L   4,5 a 6,0 tera/L"
   //         "VCM...........: 85,9 fl   80,0 a 100,0"
   //         "PH : 7,34   7,35 A 7,45"
-  // Phase 6 (Bucket 3): \s{2,} → \s+ pra aceitar colunas separadas por 1 espaço
-  const re = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\+\-\/\.]*?)[\s.:]+([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^0-9·*]+)?\s+([0-9][0-9.,]*)\s*(?:[-–aA]|[Aa])\s*([0-9][0-9.,]*)/;
+  // Phase 6 (Bucket 3 + Bug A): \s{2,} → \s+ pra aceitar colunas separadas por
+  // 1 espaço, e refMin/refMax aceitam negativo (BE em gasometria: -3,3 a +2,3)
+  const re = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\+\-\/\.]*?)[\s.:]+([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^0-9·*]+)?\s+([−\-+]?[0-9][0-9.,]*)\s*(?:[-–aA]|[Aa])\s*([−\-+]?[0-9][0-9.,]*)/;
   m = t.match(re);
   if (m) {
     const name = m[1].trim();
@@ -2236,7 +2243,9 @@ function parseParamRow(line) {
   // ─── Pattern with < upper-bound ref ──────────────────────────────────────
   // Covers: "RDW...........: 12,0 %        < 16,0 %"
   //         "Plaquetas: 150 x10³/µL   < 400"
-  const reLt = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\+\-\/\.]*?)[\s.:]+([−\-]?[0-9][0-9.,]*)\s{0,3}([a-zA-Zµ%\/~³^0-9·*]+)?\s{2,}<\s*([0-9][0-9.,]*)/;
+  // Phase 6 (Bug B): \s{0,3} entre value e unit era restritivo demais. PDFs
+  // do IMEC com líquor têm "Hemácias:   2   /mm3   < 4 mm/3" (9+ espaços).
+  const reLt = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\+\-\/\.]*?)[\s.:]+([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^0-9·*]+)?\s+<\s*([0-9][0-9.,]*)/;
   m = t.match(reLt);
   if (m) {
     const name = m[1].trim();
