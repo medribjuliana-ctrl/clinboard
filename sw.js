@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v24 (Phase 3a: PioXLab registrado com fingerprint dots-padded)
-const CACHE = 'clinboard-v24';
+// clinBoard Service Worker — v25 (Phase 3a.1: fingerprint PioX mais estrito, só dots-padded)
+const CACHE = 'clinboard-v25';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

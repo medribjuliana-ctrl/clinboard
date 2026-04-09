@@ -2800,18 +2800,24 @@ const PioXLab = {
   description: 'Hospital São Pio X (formato dots-padded, MINDRAY BC-3200)',
   fingerprint(text) {
     if (!text) return 0;
-    let score = 0;
-    // Padding com pontos nos nomes de hemograma é assinatura tipográfica
-    // extremamente específica do LIS do Pio X. Três matches independentes
-    // pra robustez.
-    if (/VCM\.{3,}\s*:/.test(text)) score += 5;
-    if (/CHCM\.{3,}\s*:/.test(text)) score += 3;
-    if (/Hem[aá]cias\.{3,}\s*:/i.test(text)) score += 3;
-    // Analisador hematológico específico
-    if (/MINDRAY\s+BC-3200/i.test(text)) score += 3;
-    // Rótulo "Pront.:" curto no cabeçalho do paciente
-    if (/\bPront\.\s*:/.test(text)) score += 2;
-    return score;
+    // Gate principal: parâmetros de hemograma com padding de pontos.
+    // Essa é a assinatura tipográfica do LIS do Pio X (convenção herdada de
+    // impressoras matriciais). Se o laudo não tem nenhum desses, não é PioX
+    // — os outros sinais que eu tentei antes ("Pront.:", "MINDRAY BC-3200")
+    // mostraram-se universais demais e causaram falsos positivos em Núcleo
+    // e Biocentro. Agora o gate é estrito: sem dots-padded, return 0.
+    //
+    // Cinco anchors independentes. Um laudo com hemograma típico do Pio X
+    // bate os 5, score = 15. Um laudo sem hemograma (ex: só bioquímica ou
+    // só EAS) bate 0 e cai no GenericLab.
+    let hits = 0;
+    if (/VCM\.{3,}\s*:/.test(text)) hits++;
+    if (/CHCM\.{3,}\s*:/.test(text)) hits++;
+    if (/Hem[aá]cias\.{3,}\s*:/i.test(text)) hits++;
+    if (/RDW\.{3,}\s*:/.test(text)) hits++;
+    if (/Hemoglobinas?\.{2,}\s*:/i.test(text)) hits++;
+    if (hits === 0) return 0;
+    return hits * 3; // 3-15 pontos dependendo de quantos anchors batem
   },
   parse(text) {
     // Phase 3a: delega 100% pro parser genérico. Zero mudança de comportamento.
