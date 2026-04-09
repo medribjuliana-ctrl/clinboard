@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v22 (Phase 2b: skipPatterns do HOC migrados pro HOCLab)
-const CACHE = 'clinboard-v22';
+// clinBoard Service Worker — v23 (Phase 2c: ERITOGRAMA typo migrado pro HOCLab.multiSections)
+const CACHE = 'clinboard-v23';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

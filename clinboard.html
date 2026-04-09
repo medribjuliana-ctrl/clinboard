@@ -2112,8 +2112,13 @@ function skipLine(line, extraRegex) {
 }
 
 // Known multi-parameter section headers
+// Phase 2c: _currentLabMultiExtra aceita seções extras específicas do lab
+// atual. Funciona igual _currentLabSkipExtra: setado pelo HOCLab.parse() antes
+// de chamar parsePDFText, limpo no finally.
+let _currentLabMultiExtra = null;
+
 const MULTI_SECTIONS = [
-  'HEMOGRAMA','ERITROGRAMA','ERITOGRAMA','LEUCOGRAMA','PLAQUETOGRAMA','SÉRIE ERITROCITÁRIA','SÉRIE LEUCOCITÁRIA','SÉRIE PLAQUETÁRIA',
+  'HEMOGRAMA','ERITROGRAMA','LEUCOGRAMA','PLAQUETOGRAMA','SÉRIE ERITROCITÁRIA','SÉRIE LEUCOCITÁRIA','SÉRIE PLAQUETÁRIA',
   'GASOMETRIA ARTERIAL','GASOMETRIA VENOSA','GASOMETRIA','COAGULOGRAMA','ROTINA DE URINA','ROTINA DE LÍQUOR','URINÁLISE',
   'LÍQUOR QUIMIOCITOLOGICO','LÍQUOR QUIMIOCITOLÓGICO','LÍQUOR, ROTINA','LÍQUOR',
   'CITOMETRIA','CITOLOGIA',
@@ -2141,7 +2146,10 @@ const MULTI_SECTIONS = [
 
 function isMultiHeader(line) {
   const t = line.trim().toUpperCase();
-  return MULTI_SECTIONS.some(s => t === s || t.startsWith(s));
+  if (MULTI_SECTIONS.some(s => t === s || t.startsWith(s))) return true;
+  const extra = _currentLabMultiExtra;
+  if (extra && extra.some(s => t === s || t.startsWith(s))) return true;
+  return false;
 }
 
 // Parse multi-parameter rows: "PARAM_NAME : VALUE UNIT   MIN - MAX UNIT"
@@ -2734,6 +2742,10 @@ const HOCLab = {
   // Phase 2b: padrões de linhas a ignorar específicos do HOC.
   // Foram migrados do skipLine global — estavam lá apenas para HOC.
   skipPatterns: /^(Resultado\s+Anterior|VALOR\s+CR[ÍI]TICO|MENOS\s+DE\s+\d|BILIRRUBINA\s+TOTAL\s*\(|BILIRRUBINA\s+(DIRETA|INDIRETA|TOTAL)\s*:\s*[A-Za-z]|GLOBULINA:|RELA[ÇC][ÃA]O\s+A\/G:)/i,
+  // Phase 2c: cabeçalhos multi-param específicos do HOC.
+  // ERITOGRAMA (sem R) é typo consistente nos laudos — não aparece em nenhum
+  // outro lab. Migrado do MULTI_SECTIONS global.
+  multiSections: ['ERITOGRAMA'],
   fingerprint(text) {
     if (!text) return 0;
     let score = 0;
@@ -2746,15 +2758,16 @@ const HOCLab = {
     return score;
   },
   parse(text) {
-    // Phase 2b: ativa skipPatterns específicos do HOC durante o parse,
-    // e restaura no finally pra não vazar pra outros labs em execuções
-    // subsequentes (mesmo compartilhando o mesmo módulo).
+    // Phase 2b/2c: ativa skipPatterns + multiSections específicos do HOC
+    // durante o parse, e restaura no finally pra não vazar pra outros labs.
     _currentLabSkipExtra = HOCLab.skipPatterns;
+    _currentLabMultiExtra = HOCLab.multiSections;
     try {
       const format = detectFormat(text);
       return parsePDFText(text, format);
     } finally {
       _currentLabSkipExtra = null;
+      _currentLabMultiExtra = null;
     }
   }
 };
