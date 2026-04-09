@@ -2702,6 +2702,46 @@ const GenericLab = {
 };
 LabRegistry.register(GenericLab);
 
+// -----------------------------------------------------------------------------
+// HOCLab — Hospital Ortopédico de Ceres (CRBM 15121)
+// -----------------------------------------------------------------------------
+// Características específicas desse laboratório:
+//   • Cabeçalho com "CRBM - 15121" (assinatura do bioquímico responsável)
+//   • Usa "ERITOGRAMA" sem R (typo consistente no laudo)
+//   • "VALOR CRÍTICO BAIXO/ALTO" em linhas separadas no hemograma e bioquímica
+//   • Faixas de referência em maiúsculas: "ATÉ 105", "MENOR 38", "INFERIOR A 8"
+//   • "Resultado Anterior :" aparece em muitos exames de bioquímica
+//   • "BILIRRUBINA TOTAL (RECÉM NASCIDOS)" em observação
+//
+// PHASE 2a: só roteamento. O parse() ainda delega 100% pro parsePDFText
+// atual — zero mudança de comportamento. O que muda é só que os fixtures
+// HOC passam a aparecer como "detectado: HOC" no relatório em vez de GENERIC.
+//
+// Nas phases seguintes vamos migrar skipLine/MULTI_SECTIONS específicas
+// do HOC pra cá, deixando o parser genérico mais magro.
+const HOCLab = {
+  id: 'HOC',
+  description: 'Hospital Ortopédico de Ceres (CRBM 15121)',
+  fingerprint(text) {
+    if (!text) return 0;
+    let score = 0;
+    // CRBM 15121 é praticamente um fingerprint único do laboratório
+    if (/CRBM\s*-?\s*15121/i.test(text)) score += 10;
+    // Typo ERITOGRAMA (sem R) é muito específico
+    if (/\bERITOGRAMA\b/.test(text)) score += 5;
+    // VALOR CRÍTICO BAIXO/ALTO em linha separada é padrão HOC
+    if (/VALOR\s+CR[ÍI]TICO\s+(BAIXO|ALTO)/i.test(text)) score += 3;
+    return score;
+  },
+  parse(text) {
+    // Phase 2a: delega pro parser genérico. Zero mudança de comportamento.
+    // Phase 2b/c/d vão introduzir lógica específica aqui.
+    const format = detectFormat(text);
+    return parsePDFText(text, format);
+  }
+};
+LabRegistry.register(HOCLab);
+
 // =============================================================================
 // Test harness — runLabFixtures()
 // =============================================================================
@@ -2740,7 +2780,7 @@ async function runLabFixtures(opts = {}) {
       labs = [...labSet];
     } else {
       // Modo fetch: tenta tanto labs registrados quanto pastas conhecidas
-      const known = ['hoc','piox','hugo','citomed','biocentro','generic'];
+      const known = ['hoc','piox','hugo','citomed','biocentro','nucleo','generic'];
       const registered = LabRegistry.list().map(s => s.id.toLowerCase());
       labs = [...new Set([...registered, ...known])];
     }

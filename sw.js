@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v19 (Phase 1.3: harness descobre labs do fileMap, não do registry)
-const CACHE = 'clinboard-v20';
+// clinBoard Service Worker — v20 (Phase 2a: HOCLab registrado, só roteamento ainda)
+const CACHE = 'clinboard-v21';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [
