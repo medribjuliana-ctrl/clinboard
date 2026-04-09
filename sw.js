@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v29 (Phase 3c: HUGOLab registrado via CNES 0697699 / CRBM 02383)
-const CACHE = 'clinboard-v29';
+// clinBoard Service Worker — v30 (Phase 5/C2: detectFormat removido, parser sem format)
+const CACHE = 'clinboard-v30';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

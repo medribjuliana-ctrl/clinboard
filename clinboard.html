@@ -1668,13 +1668,14 @@ async function extractPDFText(file) {
   return text.normalize('NFC');
 }
 
-function detectFormat(text) {
-  if (/HUGO|Urgências de Goiás|Albert Einstein/i.test(text)) return 'HUGO';
-  if (/CITOMED|citomed\.com/i.test(text)) return 'CITOMED';
-  if (/BIOCENTRO|biocentrolab/i.test(text)) return 'BIOCENTRO';
-  if (/SÃO\s+PIO\s*X|PIOX|Pio\s*X|São\s+Pio/i.test(text)) return 'PIOX';
-  return 'GENERIC';
-}
+// Phase 5 (C2, 2026-04-09): detectFormat() removido. Até a Phase 4, essa
+// função era o "roteador legado" que devolvia um string de format usado pelo
+// parsePDFText() e pelo UI. A Phase 4 substituiu o roteamento por LabRegistry
+// + fingerprints; a Phase 5 moveu a única condicional real (single-line
+// EXAM:VALUE) pra flag _currentLabSingleLineEnabled injetada pelas strategies
+// em try/finally. Com isso o parâmetro `format` saiu de parsePDFText/findDate
+// e o detectFormat deixou de ter função. Mantido aqui apenas como nota
+// histórica pra não ficar dúvida no blame.
 
 // pNum — converte string numérica (PT-BR) para Number.
 // @param s       String do valor (ex: "4.500", "6,8", "< 0,50")
@@ -1741,7 +1742,7 @@ function getStatus(v,mn,mx) {
 // Retorna a data de coleta encontrada no texto, ou null se não encontrar.
 // Prioridade: 1) padrões explícitos de "Coleta", 2) data próxima a "coleta"/"material",
 // 3) fallback para primeira data genérica (com flag isFallback).
-function findDate(text, format) {
+function findDate(text) {
   let m;
   // ── Padrões explícitos de coleta (alta confiança) ──────────────────
   m = text.match(/[Cc]oletado?\s*\(?\s*(\d{2}\/\d{2}\/\d{4})/);
@@ -2117,6 +2118,15 @@ function skipLine(line, extraRegex) {
 // de chamar parsePDFText, limpo no finally.
 let _currentLabMultiExtra = null;
 
+// Phase 5 (C2): flag que controla o matcher single-line "EXAM_NAME: VALUE UNIT"
+// (com "Valor de Referência" na próxima linha). Default = true porque a maioria
+// dos labs precisa — é a forma como bioquímica isolada costuma aparecer.
+// Strategies cujo layout é multi-linha (PioX dots-padded, HUGO single-line com
+// espaços) precisam DESATIVAR esse matcher senão ele duplica cada linha do
+// hemograma. Substitui o antigo `if (format === 'CITOMED' || format === 'GENERIC')`
+// do parser, encerrando o papel do detectFormat() (removido na Phase 5).
+let _currentLabSingleLineEnabled = true;
+
 const MULTI_SECTIONS = [
   'HEMOGRAMA','ERITROGRAMA','LEUCOGRAMA','PLAQUETOGRAMA','SÉRIE ERITROCITÁRIA','SÉRIE LEUCOCITÁRIA','SÉRIE PLAQUETÁRIA',
   'GASOMETRIA ARTERIAL','GASOMETRIA VENOSA','GASOMETRIA','COAGULOGRAMA','ROTINA DE URINA','ROTINA DE LÍQUOR','URINÁLISE',
@@ -2339,10 +2349,10 @@ function _lcrName(name) {
   return name;
 }
 
-function parsePDFText(text, format) {
+function parsePDFText(text) {
   const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
   const results = [];
-  const date = findDate(text, format) || new Date().toLocaleDateString('pt-BR');
+  const date = findDate(text) || new Date().toLocaleDateString('pt-BR');
 
   // Identify single-exam blocks bounded by "Resultado:" lines
   // And also multi-param sections
@@ -2568,8 +2578,11 @@ function parsePDFText(text, format) {
       }
     }
 
-    // CITOMED format: single line "EXAM_NAME : VALUE UNIT" with ref on next line
-    if (format === 'CITOMED' || format === 'GENERIC') {
+    // Single-line matcher: "EXAM_NAME : VALUE UNIT" com "Valor de Referência"
+    // na próxima linha. Ativo por padrão; strategies com layout multi-linha
+    // (PioX dots-padded, HUGO single-line com espaços) desativam via flag
+    // _currentLabSingleLineEnabled pra não duplicar hemograma.
+    if (_currentLabSingleLineEnabled) {
       const cm = line.match(/^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç\s\(\)\/]+?)\s*:\s*([−\-]?[0-9][0-9.,]*)\s+([a-zA-Zµ%\/~³^·]+)?$/);
       if (cm && cm[1].length>2 && cm[1].length<50 && !skipLine(line)) {
         const name = normNameDisplay(cm[1]);
@@ -2703,18 +2716,17 @@ const LabRegistry = {
 };
 
 // -----------------------------------------------------------------------------
-// GenericLab — wrapper de zero impacto sobre parsePDFText() existente.
-// É a estratégia de fallback. Reproduz exatamente o comportamento atual:
-// detectFormat() identifica o formato e parsePDFText() faz o parse.
+// GenericLab — fallback. Score mínimo, só vence quando nenhuma strategy marca
+// pontos. Usa o parser com todas as flags no default (single-line habilitado,
+// sem skip/multi extras). Phase 5 removeu a chamada a detectFormat().
 // -----------------------------------------------------------------------------
 const GenericLab = {
   id: 'GENERIC',
-  description: 'Parser genérico (comportamento atual de parsePDFText)',
+  description: 'Parser genérico (fallback quando nenhum fingerprint marca)',
   // Score baixíssimo: só ganha se nenhuma outra estratégia reconhecer o texto.
   fingerprint(text) { return 0.01; },
   parse(text) {
-    const format = detectFormat(text);
-    return parsePDFText(text, format);
+    return parsePDFText(text);
   }
 };
 LabRegistry.register(GenericLab);
@@ -2757,16 +2769,13 @@ const HOCLab = {
     if (/VALOR\s+CR[ÍI]TICO\s+(BAIXO|ALTO)/i.test(text)) score += 3;
     return score;
   },
-  // Phase 4 (C1): format explícito em vez de detectFormat(text). O HOC sempre
-  // entra no caminho genérico do parsePDFText (single-line EXAM: VALUE habilitado).
-  format: 'GENERIC',
+  // Phase 5 (C2): HOC usa single-line matcher (default=true), só injeta
+  // skipPatterns + multiSections específicos do HOC.
   parse(text) {
-    // Phase 2b/2c: ativa skipPatterns + multiSections específicos do HOC
-    // durante o parse, e restaura no finally pra não vazar pra outros labs.
     _currentLabSkipExtra = HOCLab.skipPatterns;
     _currentLabMultiExtra = HOCLab.multiSections;
     try {
-      return parsePDFText(text, HOCLab.format);
+      return parsePDFText(text);
     } finally {
       _currentLabSkipExtra = null;
       _currentLabMultiExtra = null;
@@ -2826,14 +2835,16 @@ const PioXLab = {
     if (/Hem[aá]cias\.{3,}\s*:/i.test(text)) score += 1;
     return score;
   },
-  // Phase 4 (C1): format explícito. PioX usa o caminho 'PIOX' do parser, que
-  // desabilita o matcher single-line EXAM: VALUE (evita duplicatas com o
-  // parsing multi-linha próprio do formato dots-padded).
-  format: 'PIOX',
+  // Phase 5 (C2): desabilita o matcher single-line. O layout dots-padded do
+  // Pio X é parseado pelo multi-param row matcher; se o single-line rodar
+  // em paralelo, cada parâmetro do hemograma vira entrada duplicada.
   parse(text) {
-    // Phase 3a: delega 100% pro parser genérico. Zero mudança de comportamento.
-    // Nas phases seguintes vamos identificar e migrar patterns específicos.
-    return parsePDFText(text, PioXLab.format);
+    _currentLabSingleLineEnabled = false;
+    try {
+      return parsePDFText(text);
+    } finally {
+      _currentLabSingleLineEnabled = true;
+    }
   }
 };
 LabRegistry.register(PioXLab);
@@ -2875,14 +2886,12 @@ const IMECLab = {
     if (/CRBM-3\s*3413/i.test(text)) score += 3;
     return score;
   },
-  // Phase 4 (C1): format explícito = 'GENERIC'. Antes chamávamos
-  // detectFormat(text), que podia devolver 'BIOCENTRO' se o texto contivesse
-  // a substring "biocentro" no rodapé do laudo — e isso desabilitava
-  // silenciosamente o matcher single-line. Como os fixtures do IMEC precisam
-  // do caminho genérico, fixamos aqui.
-  format: 'GENERIC',
+  // Phase 5 (C2): IMEC usa todas as flags no default (single-line habilitado,
+  // sem skip/multi extras). Antes do C2, a chamada a detectFormat podia
+  // devolver 'BIOCENTRO' por causa de substring no rodapé e desabilitava
+  // silenciosamente o single-line — bug latente que deixa de existir agora.
   parse(text) {
-    return parsePDFText(text, IMECLab.format);
+    return parsePDFText(text);
   }
 };
 LabRegistry.register(IMECLab);
@@ -2927,12 +2936,9 @@ const NucleoLab = {
     if (/ABX-MICROS\s*60/i.test(text)) score += 3;
     return score;
   },
-  // Phase 4 (C1): format explícito = 'GENERIC'.
-  format: 'GENERIC',
+  // Phase 5 (C2): Núcleo usa todas as flags no default.
   parse(text) {
-    // Phase 3b: delega pro parser genérico. Patterns específicos do Núcleo
-    // (se houver) vão ser migrados em phases seguintes.
-    return parsePDFText(text, NucleoLab.format);
+    return parsePDFText(text);
   }
 };
 LabRegistry.register(NucleoLab);
@@ -2955,9 +2961,9 @@ LabRegistry.register(NucleoLab);
 // SÉRIE ERITROCITÁRIA / LEUCOCITÁRIA / PLAQUETÁRIA. Bioquímica isolada usa
 // "Resultado: VAL UN" com "Valores de Referência" no header da seção.
 //
-// O parser legacy já tem o caminho `format === 'HUGO'`, que pula o single-line
-// matcher EXAM:VALUE genérico (senão duplicaria cada linha do hemograma com
-// o multi-param row matcher). Por isso a strategy declara format: 'HUGO'.
+// A strategy precisa DESATIVAR o matcher single-line EXAM:VALUE genérico —
+// senão ele duplica cada linha do hemograma em cima do multi-param row matcher.
+// Isso é feito injetando _currentLabSingleLineEnabled = false no parse().
 //
 // Identificadores fortes (qualquer um já fecha o caso):
 //   • CNES 0697699          ← rodapé, único do hospital
@@ -2969,9 +2975,6 @@ LabRegistry.register(NucleoLab);
 const HUGOLab = {
   id: 'HUGO',
   description: 'Hospital de Urgências de Goiás (Goiânia-GO, gestão IBGH/Albert Einstein)',
-  // Phase 4 (C1): format explícito = 'HUGO'. Preserva o caminho legacy
-  // que desabilita o single-line matcher pra não duplicar parâmetros do hemograma.
-  format: 'HUGO',
   fingerprint(text) {
     if (!text) return 0;
     let score = 0;
@@ -2985,8 +2988,17 @@ const HUGOLab = {
     if (/Pront[uú]ario\s+SP\s*:/i.test(text)) score += 2;
     return score;
   },
+  // Phase 5 (C2): desabilita o single-line matcher. O layout do HUGO usa
+  // "EXAM : VALUE UNIT  REF" alinhado por espaços e o multi-param row matcher
+  // já dá conta; se o single-line rodar em paralelo, duplica cada parâmetro
+  // do hemograma (SÉRIE ERITROCITÁRIA/LEUCOCITÁRIA/PLAQUETÁRIA).
   parse(text) {
-    return parsePDFText(text, HUGOLab.format);
+    _currentLabSingleLineEnabled = false;
+    try {
+      return parsePDFText(text);
+    } finally {
+      _currentLabSingleLineEnabled = true;
+    }
   }
 };
 LabRegistry.register(HUGOLab);
@@ -3572,12 +3584,11 @@ async function processFile(file) {
     document.getElementById('proc-status').textContent = 'Lendo PDF...';
     const text = await extractPDFText(file);
     document.getElementById('proc-status').textContent = 'Analisando resultados...';
-    const format = detectFormat(text);
-    // Phase 1: roteia via LabRegistry. Por enquanto só GenericLab está registrado,
-    // que delega para parsePDFText(text, format). Comportamento idêntico ao anterior.
+    // Phase 5 (C2): roteamento 100% via LabRegistry + fingerprints.
+    // detectFormat() foi removido e o parser não recebe mais `format`.
     const { lab: detectedLab, results } = LabRegistry.run(text);
     if (detectedLab) console.debug('[clinBoard] Lab detectado:', detectedLab.id);
-    const date = findDate(text, format);
+    const date = findDate(text);
     if (!date) toast('Data de coleta não encontrada no PDF — verifique a data antes de salvar.', 'warn');
     if (results.length === 0) {
       document.getElementById('err-msg').textContent = 'Não foi possível identificar resultados neste PDF. Adicione os parâmetros manualmente.';
@@ -3588,7 +3599,7 @@ async function processFile(file) {
       return;
     }
     extractedResults = results.map(r=>({...r,included:r.known!==false}));
-    const labKey = (detectedLab && detectedLab.id) || format;
+    const labKey = (detectedLab && detectedLab.id) || 'GENERIC';
     renderExtracted(labKey, date);
     showUploadStep(3);
     document.getElementById('btn-save-lab').style.display = '';
@@ -3702,9 +3713,9 @@ const LAB_LABELS = {
   GENERIC:'Laboratório genérico'
 };
 
-function renderExtracted(format, date) {
+function renderExtracted(labId, date) {
   document.getElementById('ext-date').textContent = date;
-  document.getElementById('ext-lab').textContent = LAB_LABELS[format]||format;
+  document.getElementById('ext-lab').textContent = LAB_LABELS[labId]||labId;
   // Preset date edit
   const iso = dateToISO(date);
   document.getElementById('ext-date-edit').value = iso||new Date().toISOString().slice(0,10);
