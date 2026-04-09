@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v30 (Phase 5/C2: detectFormat removido, parser sem format)
-const CACHE = 'clinboard-v30';
+// clinBoard Service Worker — v31 (Phase 6: Bucket 1 + Bucket 3 — single-line dots + \s+)
+const CACHE = 'clinboard-v31';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

@@ -2218,7 +2218,8 @@ function parseParamRow(line) {
   //         "Hemácias......: 4,48 tera/L   4,5 a 6,0 tera/L"
   //         "VCM...........: 85,9 fl   80,0 a 100,0"
   //         "PH : 7,34   7,35 A 7,45"
-  const re = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\+\-\/\.]*?)[\s.:]+([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^0-9·*]+)?\s{2,}([0-9][0-9.,]*)\s*(?:[-–aA]|[Aa])\s*([0-9][0-9.,]*)/;
+  // Phase 6 (Bucket 3): \s{2,} → \s+ pra aceitar colunas separadas por 1 espaço
+  const re = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\+\-\/\.]*?)[\s.:]+([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^0-9·*]+)?\s+([0-9][0-9.,]*)\s*(?:[-–aA]|[Aa])\s*([0-9][0-9.,]*)/;
   m = t.match(re);
   if (m) {
     const name = m[1].trim();
@@ -2583,7 +2584,9 @@ function parsePDFText(text) {
     // (PioX dots-padded, HUGO single-line com espaços) desativam via flag
     // _currentLabSingleLineEnabled pra não duplicar hemograma.
     if (_currentLabSingleLineEnabled) {
-      const cm = line.match(/^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç\s\(\)\/]+?)\s*:\s*([−\-]?[0-9][0-9.,]*)\s+([a-zA-Zµ%\/~³^·]+)?$/);
+      // Phase 6 (Bucket 1): classe inclui \. pra casar padding com pontos
+      // usado pelo LIS regional (PioX/IMEC/Núcleo): "Resultado.......: 6,7 mg/dL"
+      const cm = line.match(/^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç\s\(\)\/\.]+?)[\s\.]*:\s*([−\-]?[0-9][0-9.,]*)\s+([a-zA-Zµ%\/~³^·]+)?$/);
       if (cm && cm[1].length>2 && cm[1].length<50 && !skipLine(line)) {
         const name = normNameDisplay(cm[1]);
         const val = pNum(cm[2]);
