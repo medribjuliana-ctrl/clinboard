@@ -2654,9 +2654,8 @@ function parsePDFText(text, format) {
 // =============================================================================
 //
 // Cada estratégia representa o parser de um laboratório específico. A migração
-// é feita laboratório-por-laboratório (HOC, PioX, IMEC, Núcleo já migrados;
-// HUGO e Citomed pendentes) com fixtures em /fixtures/<lab>/ servindo como
-// testes de regressão.
+// é feita laboratório-por-laboratório (HOC, PioX, IMEC, Núcleo, HUGO já
+// migrados) com fixtures em /fixtures/<lab>/ servindo como testes de regressão.
 //
 // Interface:
 //   {
@@ -2938,6 +2937,60 @@ const NucleoLab = {
 };
 LabRegistry.register(NucleoLab);
 
+// -----------------------------------------------------------------------------
+// HUGOLab — Hospital de Urgências de Goiás (Goiânia-GO)
+// -----------------------------------------------------------------------------
+// Hospital público de gestão IBGH/Albert Einstein, referência em urgência e
+// trauma em Goiás. O laudo tem identificação institucional muito explícita,
+// então o fingerprint é trivial.
+//
+// Layout do hemograma (single-line por parâmetro, espaços pra alinhar — NÃO é
+// dots-padded como Pio X/IMEC/Núcleo):
+//
+//   Hemácias   : 2,76 x10~6/uL                    4,30 - 5,70 x10~6/uL
+//   Hemoglobina: 8,4 g/dL                         13,5 - 17,5 g/dL
+//   VCM        : 92,4 fl                          81,0 - 95,0 fl
+//
+// Notação das unidades: "x10~6/uL" (til ASCII em vez de superscript). Seções:
+// SÉRIE ERITROCITÁRIA / LEUCOCITÁRIA / PLAQUETÁRIA. Bioquímica isolada usa
+// "Resultado: VAL UN" com "Valores de Referência" no header da seção.
+//
+// O parser legacy já tem o caminho `format === 'HUGO'`, que pula o single-line
+// matcher EXAM:VALUE genérico (senão duplicaria cada linha do hemograma com
+// o multi-param row matcher). Por isso a strategy declara format: 'HUGO'.
+//
+// Identificadores fortes (qualquer um já fecha o caso):
+//   • CNES 0697699          ← rodapé, único do hospital
+//   • CRBM 02383            ← Dra. Bruna Carneiro Vieira Paixão (resp. técnica)
+//   • "HUGO - UTI X"        ← serviço solicitante (HUGO no nome do setor)
+//   • Avenida 31 de março / Pedro Ludovico / Setor Marista — endereço único
+//   • ANVISA 350055
+//   • "Prontuário SP:"      ← rótulo característico do MV/SaúdePública
+const HUGOLab = {
+  id: 'HUGO',
+  description: 'Hospital de Urgências de Goiás (Goiânia-GO, gestão IBGH/Albert Einstein)',
+  // Phase 4 (C1): format explícito = 'HUGO'. Preserva o caminho legacy
+  // que desabilita o single-line matcher pra não duplicar parâmetros do hemograma.
+  format: 'HUGO',
+  fingerprint(text) {
+    if (!text) return 0;
+    let score = 0;
+    if (/CNES[\s.:]*0697699/i.test(text)) score += 10;
+    if (/CRBM[\s:]*02383/i.test(text)) score += 8;
+    if (/Bruna\s+Carneiro\s+Vieira\s+Paix[ãa]o/i.test(text)) score += 6;
+    if (/HUGO\s*-\s*UTI/i.test(text)) score += 5;
+    if (/Setor\s+Marista[^\n]*Goi[âa]nia/i.test(text)) score += 5;
+    if (/Avenida\s+31\s+de\s+mar[çc]o[^\n]*Pedro\s+Ludovico/i.test(text)) score += 5;
+    if (/ANVISA\s*350055/i.test(text)) score += 3;
+    if (/Pront[uú]ario\s+SP\s*:/i.test(text)) score += 2;
+    return score;
+  },
+  parse(text) {
+    return parsePDFText(text, HUGOLab.format);
+  }
+};
+LabRegistry.register(HUGOLab);
+
 // =============================================================================
 // Test harness — runLabFixtures()
 // =============================================================================
@@ -3134,8 +3187,7 @@ function adminListStrategies() {
     lines.push(`  • ${s.id}  —  ${s.description || '(sem descrição)'}`);
   }
   lines.push('');
-  lines.push('Estratégias ativas: HOC, PioX, IMEC, Núcleo + GenericLab (fallback).');
-  lines.push('Pendentes: HUGOLab, CitomedLab (aguardando fixtures).');
+  lines.push('Estratégias ativas: HOC, PioX, IMEC, Núcleo, HUGO + GenericLab (fallback).');
   adminLog(lines.join('\n'), true);
 }
 
