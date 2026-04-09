@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v34 (Phase 6d: PioX pediatric ref-table skip + TP→TP(segundos) fix)
-const CACHE = 'clinboard-v34';
+// clinBoard Service Worker — v35 (Phase 6f: HOC líquor — refs DE N A M, qualitativos Aspecto/Cor/Coágulo/VDRL, dedup)
+const CACHE = 'clinboard-v35';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

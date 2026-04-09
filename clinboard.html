@@ -2193,8 +2193,22 @@ function parseParamRow(line) {
   // Remove tudo após 3+ espaços SE o que segue começa com letra MAIÚSCULA
   // (nome repetido da coluna de referência). Preserva unidades curtas como "fL"
   // e refs numéricas como "< 16,0 %", que começam com minúscula ou dígito.
-  t = t.replace(/\s{3,}([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ].*)$/, '').trim();
+  // Phase 6f: exceção — NÃO strip se o tail for ref HOC ("DE N A M unit"
+  // ou "ADULTOS: ATÉ N"). Normaliza antes pra pattern re/reLt pegarem.
+  if (!/\s{3,}(?:DE\s+\d|ADULTOS?\s*:\s*AT[ÉE])/i.test(t)) {
+    t = t.replace(/\s{3,}([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ].*)$/, '').trim();
+  }
   if (t.length < 3) return null;
+
+  // ─── Phase 6f: HOC line-side ref normalization ─────────────────────────
+  // HOC coloca ref na mesma linha, no formato "DE N A M unit" ou
+  // "ADULTOS: ATÉ N unit". Converte pra "N a M" / "até N" para
+  // as patterns re/reLt pegarem.
+  //   "Glicose : 140,0 mg/dL  DE 50,0 A 80,0 mg/dL"  →  "... 50,0 a 80,0 mg/dL"
+  //   "Cloretos: 125,0 mg/dL  DE 118 A 132 mEq/L"     →  "... 118 a 132 mEq/L"
+  //   "Células Nucleadas: 0,00 /mm³  ADULTOS: ATÉ 5 CÉLULAS..." → "... até 5"
+  t = t.replace(/\bDE\s+([0-9][0-9.,]*)\s+A\s+([0-9][0-9.,]*)/i, '$1 a $2');
+  t = t.replace(/\bADULTOS?\s*:\s*AT[ÉE]\s+([0-9][0-9.,]*)(?:\s+[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç].*)?$/i, '< $1');
 
   // ─── Pré-processamento: normaliza abreviações com pontos (HOC/Citomed) ───
   // "V.C.M. : 90,1 fL" → "VCM : 90,1 fL"
@@ -2268,6 +2282,24 @@ function parseParamRow(line) {
     }
   }
 
+  // ─── Phase 6e: single-value ref (CITOLOGIA de líquor) ────────────────────
+  // Covers: "Neutrófilos:   9   %    0 %" (ref é UM único valor esperado,
+  // tratado como refMax pra sinalizar elevação se value > ref).
+  const reSingleRef = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\+\-\/\.]*?)[\s.:]+([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^0-9·*]+)\s+([0-9][0-9.,]*)\s*[a-zA-Zµ%\/~³^0-9·*]*\s*$/;
+  m = t.match(reSingleRef);
+  if (m) {
+    const name = m[1].trim();
+    const minLenS = normName(name) ? 1 : 2;
+    if (name.length >= minLenS && name.length <= 50 && !/^\d/.test(name)) {
+      const val = pNum(m[2]);
+      const unit = (m[3]||'').trim();
+      const refMax = pNum(m[4]);
+      if (val !== null && refMax !== null) {
+        return {name:normNameDisplay(name), value:val, valueStr:m[2], unit, refMin:0, refMax};
+      }
+    }
+  }
+
   // ─── Pattern without ref ─────────────────────────────────────────────────
   // Covers: "PARAM : VALUE UNIT"
   const re2 = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\+\-\/\.]*?)[\s.:]+([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^·°]+)?$/;
@@ -2301,9 +2333,16 @@ const QUAL_STATUS = {
   'DETECTADO':'high','DETECTÁVEL':'high','DETECTAVEL':'high',
   'IMUNE':'normal',
   'INDETERMINADO':'low','INCONCLUSIVO':'low',
+  // Phase 6f: qualitativos de líquor (caracteres físicos)
+  'LÍMPIDO':'normal','LIMPIDO':'normal',
+  'INCOLOR':'normal','CRISTALINO':'normal',
+  'TURVO':'high','LIGEIRAMENTE TURVO':'low','OPACO':'high',
+  'HEMORRÁGICO':'high','HEMORRAGICO':'high','XANTOCRÔMICO':'high','XANTOCROMICO':'high',
+  'AMARELADO':'low','ROSADO':'low','AVERMELHADO':'high',
+  'PRESENTE':'high',
 };
 
-const QUAL_PATTERN = /^(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE)$/i;
+const QUAL_PATTERN = /^(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE|L[ÍI]MPIDO|INCOLOR|AUSENTE|PRESENTE|TURVO|OPACO|CRISTALINO|HEMORR[ÁA]GICO|XANTOCR[ÔO]MICO|AMARELADO|ROSADO|AVERMELHADO|LIGEIRAMENTE\s+TURVO)$/i;
 
 function qualStatus(txt) {
   const u = txt.trim().toUpperCase().replace(/\s+/g,' ');
@@ -2314,7 +2353,7 @@ function qualStatus(txt) {
 // For lines like "C. difficile Toxina A : NEGATIVO   Negativo"
 function parseQualRow(line) {
   const t = line.trim();
-  const m = t.match(/^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\.\(\)\+\-\/]*?)[\s.:]+\s*(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE)(?:\s|$)/i);
+  const m = t.match(/^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\.\(\)\+\-\/]*?)[\s.:]+\s*(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE|L[ÍI]MPIDO|INCOLOR|AUSENTE|PRESENTE|TURVO|OPACO|CRISTALINO|HEMORR[ÁA]GICO|XANTOCR[ÔO]MICO|AMARELADO|ROSADO|AVERMELHADO)(?:\s|$)/i);
   if (!m) return null;
   const name = m[1].trim();
   if (name.length < 3 || name.length > 60) return null;
@@ -2341,6 +2380,11 @@ const LCR_RENAME = {
   'Lactato':'Lactato (LCR)',
   'pH':'pH (LCR)',
   'Cloro':'Cloretos (LCR)',
+  // Phase 6f: qualitativos de líquor (HOC ANTES/APÓS CENTRIFUGAÇÃO)
+  'Aspecto':'Aspecto (LCR)',
+  'Cor':'Cor (LCR)',
+  'Coágulo':'Coágulo (LCR)','Coagulo':'Coágulo (LCR)',
+  'VDRL':'VDRL (LCR)',
 };
 
 // Nomes já canônicos de líquor (não precisam renomear)
@@ -2350,6 +2394,7 @@ const LCR_KEEP = new Set([
   'pH (LCR)','Macrófagos (LCR)','VDRL (LCR)',
   'Neutrófilos (LCR)','Linfócitos (LCR)','Monócitos (LCR)',
   'Eosinófilos (LCR)','Basófilos (LCR)','Plasmócitos (LCR)',
+  'Aspecto (LCR)','Cor (LCR)','Coágulo (LCR)',
 ]);
 
 function _lcrName(name) {
@@ -2358,8 +2403,9 @@ function _lcrName(name) {
   // Se está na tabela de rename, aplica
   if (LCR_RENAME[name]) return LCR_RENAME[name];
   // Params específicos de líquor que não conflitam
+  // Phase 6f: Nucleadas ANTES do fallback Células pra não perder "Nucleadas"
+  if (/^C[eé]lulas\s+Nucleadas/i.test(name)) return 'Células Nucleadas (LCR)';
   if (/^(Células|Celulas)/i.test(name)) return 'Células (LCR)';
-  if (/^Células Nucleadas/i.test(name)) return 'Células Nucleadas (LCR)';
   if (/^Macr[oó]fagos/i.test(name)) return 'Macrófagos (LCR)';
   if (/^Cloretos/i.test(name)) return 'Cloretos (LCR)';
   if (/^Prote[ií]nas?$/i.test(name)) return 'Proteínas (LCR)';
@@ -2495,7 +2541,10 @@ function parsePDFText(text) {
       // Detecta contexto de líquor (seções que contêm parâmetros que conflitam com sangue)
       const lineUp = line.trim().toUpperCase();
       const isLiquorHeader = /^(L[ÍI]QUOR|ROTINA DE L[ÍI]QUOR)/.test(lineUp);
-      const isLiquorSubHeader = /^(EXAME MICROSC|CITOL[ÓO]GICO DIFERENCIAL|EXAME BIOQU[ÍI]M|BIOQU[ÍI]MICA|CARACTERES F[ÍI]S|ANTES DA CENTRIFUGA|AP[ÓO]S A CENTRIFUGA)/.test(lineUp);
+      // Phase 6e: CITOMETRIA e CITOLOGIA são sub-headers de líquor no IMEC.
+      // Sem elas aqui, inLiquor era resetado ao entrar em CITOMETRIA/CITOLOGIA
+      // e Hemácias/Leucócitos/Neutrófilos/etc perdiam o sufixo (LCR).
+      const isLiquorSubHeader = /^(EXAME MICROSC|CITOL[ÓO]GICO DIFERENCIAL|CITOLOGIA|CITOMETRIA|EXAME BIOQU[ÍI]M|BIOQU[ÍI]MICA|CARACTERES F[ÍI]S|ANTES DA CENTRIFUGA|AP[ÓO]S A CENTRIFUGA)/.test(lineUp);
       if (isLiquorHeader) {
         inLiquor = true;
       } else if (!isLiquorSubHeader) {
@@ -2635,7 +2684,11 @@ function parsePDFText(text) {
     // na próxima linha. Ativo por padrão; strategies com layout multi-linha
     // (PioX dots-padded, HUGO single-line com espaços) desativam via flag
     // _currentLabSingleLineEnabled pra não duplicar hemograma.
-    if (_currentLabSingleLineEnabled) {
+    if (_currentLabSingleLineEnabled && !inMulti) {
+      // Phase 6f: !inMulti guard — evita duplicar rows de líquor HOC
+      // (Hemácias/Neutrófilos/etc) que também são pegas pelo inMulti block
+      // com sufixo (LCR). Sem esta guarda, aparecia uma versão SEM sufixo
+      // (single-line) e uma versão COM (LCR) (inMulti), fugindo do dedup.
       // Phase 6 (Bucket 1): classe inclui \. pra casar padding com pontos
       // usado pelo LIS regional (PioX/IMEC/Núcleo): "Resultado.......: 6,7 mg/dL"
       const cm = line.match(/^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç\s\(\)\/\.]+?)[\s\.]*:\s*([−\-]?[0-9][0-9.,]*)\s+([a-zA-Zµ%\/~³^·]+)?$/);
@@ -2692,11 +2745,13 @@ function parsePDFText(text) {
       row.status = getStatus(row.value,row.refMin,row.refMax);
       if (!SKIP_NAMES.has(row.name.toUpperCase())) {
         // Phase 6c: second-pass dedup precisa normalizar " (U)" suffix (marcador
-        // EAS urina) pra não duplicar pH/Leucócitos/Hemácias/Tubulares quando o
-        // arquivo de EAS (Núcleo) também tem ref range matchável por parseParamRow.
-        const stripU = s => String(s).replace(/\s*\(U\)\s*$/, '').trim().toLowerCase();
-        const rn = stripU(row.name);
-        const dup = results.find(r => stripU(r.name)===rn && r.date===row.date && String(r.value)===String(row.value));
+        // EAS urina) pra não duplicar pH/Leucócitos/Hemácias/Tubulares.
+        // Phase 6e: também normaliza " (LCR)" (marcador líquor) pra não duplicar
+        // Glicose/Cloro/Proteínas que aparecem tanto via _lcrName no inMulti quanto
+        // na second-pass (IMEC líquor). Normaliza também "Cloro"<->"Cloretos".
+        const stripSuf = s => String(s).replace(/\s*\((U|LCR)\)\s*$/, '').trim().toLowerCase().replace(/^cloro$/,'cloretos').replace(/^prote[ií]nas?(\s+totais)?$/,'proteinas').replace(/^c[eé]lulas(\s+nucleadas)?$/,'celulas nucleadas');
+        const rn = stripSuf(row.name);
+        const dup = results.find(r => stripSuf(r.name)===rn && r.date===row.date && String(r.value)===String(row.value));
         if (!dup) results.push(row);
       }
     }
@@ -3415,8 +3470,10 @@ const SKIP_NAMES = new Set([
   'SÉRIE ERITROCITÁRIA','SÉRIE LEUCOCITÁRIA','SÉRIE PLAQUETÁRIA','ERITROGRAMA','LEUCOGRAMA',
   'PLAQUETOGRAMA','HEMOGRAMA COMPLETO','HEMOGRAMA COM PLAQUETAS','HEMOGRAMA AUTOMATIZADO',
   'BIOQUÍMICA','BIOQUIMICA','CITOMETRIA','CITOLOGIA',
-  'VDRL','BACTERIOSCOPIA GRAM','BACTERIOSCOPIA ZIEHL','PESQUISA DE FUNGOS',
-  'ASPECTO','COR','IDENTIFICAÇÃO',
+  'BACTERIOSCOPIA GRAM','BACTERIOSCOPIA ZIEHL','PESQUISA DE FUNGOS',
+  'IDENTIFICAÇÃO',
+  // Phase 6f: ASPECTO/COR/COÁGULO/VDRL removidos do SKIP_NAMES porque
+  // são parâmetros qualitativos reais em laudos de líquor (HOC).
   'EXAME FÍSICO','EXAME QUÍMICO','EXAME MICROSCÓPICO','EXAME MICROSCOPICO',
   'CITOLÓGICO DIFERENCIAL','CITOLOGICO DIFERENCIAL','EXAME BIOQUÍMICO','EXAME BIOQUIMICO',
   'CARACTERES FÍSICOS','CARACTERES FISICOS',
@@ -3425,7 +3482,7 @@ const SKIP_NAMES = new Set([
   'CONDIÇÕES DO PACIENTE','CONDICOES DO PACIENTE',
   'LOCAL DA PUNÇÃO','LOCAL DA PUNCAO',
   'PRESSÃO INICIAL','PRESSAO INICIAL','PRESSÃO FINAL','PRESSAO FINAL',
-  'RETIRADO','COÁGULO','COAGULO',
+  'RETIRADO',
   // Headers de toxinas/sorologias
   'CLOSTRIDIUM DIFFICILE','CLOSTRIDIUM DIFFICILE, PESQUISA DA TOXINA A E B',
   'VALOR DE REFERÊNCIA','ANÁLISE FÍSICO-QUÍMICO','ANALISE FISICO-QUIMICO',
