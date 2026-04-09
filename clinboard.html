@@ -2097,9 +2097,18 @@ function normNameDisplay(raw) {
     raw.trim().replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
 }
 
+// Phase 2b: skipLine aceita um regex extra (padrões específicos do lab atual).
+// O módulo-level _currentLabSkipExtra é setado pelo HOCLab.parse() (e outros
+// labs no futuro) antes de chamar parsePDFText, e limpo no finally.
+let _currentLabSkipExtra = null;
+
 // Lines to skip
-function skipLine(line) {
-  return /^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido\s|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica|Referência\s|Referência:|Refer[êe]ncia\s+Adultos|Recém-Nascidos:|Rec[ée]m-Nascidos:|Hora\s+da\s+[Cc]oleta|Evolução\s+do\s+paciente|Notas:|Material\s+biológico|Condições\s+do\s+Paciente|Local\s+da\s+pun[çc][ãa]o|Press[ãa]o\s+(Inicial|Final)|Adultos:|ADULTOS:|Resultado\s*$|Resultado\s+Anterior|VALOR\s+(DE\s+REFER|CR[ÍI]TICO)|VALORES\s+DE\s+REFER|MENOS\s+DE\s+\d|BILIRRUBINA\s+TOTAL\s*\(|BILIRRUBINA\s+(DIRETA|INDIRETA|TOTAL)\s*:\s*[A-Za-z]|GLOBULINA:|RELA[ÇC][ÃA]O\s+A\/G:)/i.test(line.trim());
+function skipLine(line, extraRegex) {
+  const t = line.trim();
+  if (/^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido\s|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica|Referência\s|Referência:|Refer[êe]ncia\s+Adultos|Recém-Nascidos:|Rec[ée]m-Nascidos:|Hora\s+da\s+[Cc]oleta|Evolução\s+do\s+paciente|Notas:|Material\s+biológico|Condições\s+do\s+Paciente|Local\s+da\s+pun[çc][ãa]o|Press[ãa]o\s+(Inicial|Final)|Adultos:|ADULTOS:|Resultado\s*$|VALOR\s+DE\s+REFER|VALORES\s+DE\s+REFER)/i.test(t)) return true;
+  const extra = extraRegex || _currentLabSkipExtra;
+  if (extra && extra.test(t)) return true;
+  return false;
 }
 
 // Known multi-parameter section headers
@@ -2722,6 +2731,9 @@ LabRegistry.register(GenericLab);
 const HOCLab = {
   id: 'HOC',
   description: 'Hospital Ortopédico de Ceres (CRBM 15121)',
+  // Phase 2b: padrões de linhas a ignorar específicos do HOC.
+  // Foram migrados do skipLine global — estavam lá apenas para HOC.
+  skipPatterns: /^(Resultado\s+Anterior|VALOR\s+CR[ÍI]TICO|MENOS\s+DE\s+\d|BILIRRUBINA\s+TOTAL\s*\(|BILIRRUBINA\s+(DIRETA|INDIRETA|TOTAL)\s*:\s*[A-Za-z]|GLOBULINA:|RELA[ÇC][ÃA]O\s+A\/G:)/i,
   fingerprint(text) {
     if (!text) return 0;
     let score = 0;
@@ -2734,10 +2746,16 @@ const HOCLab = {
     return score;
   },
   parse(text) {
-    // Phase 2a: delega pro parser genérico. Zero mudança de comportamento.
-    // Phase 2b/c/d vão introduzir lógica específica aqui.
-    const format = detectFormat(text);
-    return parsePDFText(text, format);
+    // Phase 2b: ativa skipPatterns específicos do HOC durante o parse,
+    // e restaura no finally pra não vazar pra outros labs em execuções
+    // subsequentes (mesmo compartilhando o mesmo módulo).
+    _currentLabSkipExtra = HOCLab.skipPatterns;
+    try {
+      const format = detectFormat(text);
+      return parsePDFText(text, format);
+    } finally {
+      _currentLabSkipExtra = null;
+    }
   }
 };
 LabRegistry.register(HOCLab);

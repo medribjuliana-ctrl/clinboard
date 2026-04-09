@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v20 (Phase 2a: HOCLab registrado, só roteamento ainda)
-const CACHE = 'clinboard-v21';
+// clinBoard Service Worker — v22 (Phase 2b: skipPatterns do HOC migrados pro HOCLab)
+const CACHE = 'clinboard-v22';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [
