@@ -2800,24 +2800,29 @@ const PioXLab = {
   description: 'Hospital São Pio X (formato dots-padded, MINDRAY BC-3200)',
   fingerprint(text) {
     if (!text) return 0;
-    // Gate principal: parâmetros de hemograma com padding de pontos.
-    // Essa é a assinatura tipográfica do LIS do Pio X (convenção herdada de
-    // impressoras matriciais). Se o laudo não tem nenhum desses, não é PioX
-    // — os outros sinais que eu tentei antes ("Pront.:", "MINDRAY BC-3200")
-    // mostraram-se universais demais e causaram falsos positivos em Núcleo
-    // e Biocentro. Agora o gate é estrito: sem dots-padded, return 0.
+    // GATE: precisa ter o analisador MINDRAY BC-3200 (hematologia).
     //
-    // Cinco anchors independentes. Um laudo com hemograma típico do Pio X
-    // bate os 5, score = 15. Um laudo sem hemograma (ex: só bioquímica ou
-    // só EAS) bate 0 e cai no GenericLab.
-    let hits = 0;
-    if (/VCM\.{3,}\s*:/.test(text)) hits++;
-    if (/CHCM\.{3,}\s*:/.test(text)) hits++;
-    if (/Hem[aá]cias\.{3,}\s*:/i.test(text)) hits++;
-    if (/RDW\.{3,}\s*:/.test(text)) hits++;
-    if (/Hemoglobinas?\.{2,}\s*:/i.test(text)) hits++;
-    if (hits === 0) return 0;
-    return hits * 3; // 3-15 pontos dependendo de quantos anchors batem
+    // Descoberta crítica na Phase 3a.1: o formato dots-padded
+    // ("Hemácias.......:", "VCM............:") NÃO é exclusivo do Pio X.
+    // O Hospital IMEC (pasta biocentro) usa o mesmíssimo layout — com
+    // Sysmex XN-550 em vez de MINDRAY. Provavelmente é o mesmo vendor
+    // de LIS atendendo vários hospitais da região.
+    //
+    // Portanto, o único discriminador positivo do Pio X é o analisador
+    // hematológico específico. O laudo do Pio X não tem nenhum outro
+    // identificador de hospital (nem nome, nem logo, nem CRBM, nem CNES).
+    //
+    // Limitação aceita: um fixture Pio X que seja só bioquímica (sem
+    // hemograma) não vai ter a string "MINDRAY BC-3200" e cai no
+    // GenericLab. Isso é correto — sem marcadores, não dá pra identificar.
+    if (!/MINDRAY\s+BC-3200/i.test(text)) return 0;
+    let score = 10; // gate passou
+    // Anchors secundários (dots-padded) apenas confirmam e dão margem
+    // sobre outros labs que possam vir a ter MINDRAY BC-3200 também.
+    if (/VCM\.{3,}\s*:/.test(text)) score += 1;
+    if (/CHCM\.{3,}\s*:/.test(text)) score += 1;
+    if (/Hem[aá]cias\.{3,}\s*:/i.test(text)) score += 1;
+    return score;
   },
   parse(text) {
     // Phase 3a: delega 100% pro parser genérico. Zero mudança de comportamento.
@@ -2827,6 +2832,52 @@ const PioXLab = {
   }
 };
 LabRegistry.register(PioXLab);
+
+// -----------------------------------------------------------------------------
+// IMECLab — Hospital IMEC (pasta fixtures/biocentro — nome legado)
+// -----------------------------------------------------------------------------
+// Descoberto na Phase 3a.1 ao investigar falsos positivos: os fixtures em
+// fixtures/biocentro/ são na verdade laudos do **Hospital IMEC** em Ceres-GO.
+// O nome "biocentro" é um legado — provavelmente o Biocentro é o laboratório
+// terceirizado que opera o setor de análises clínicas do Hospital IMEC.
+//
+// Identificadores fortes (qualquer um fecha o caso):
+//   • "Local......: Hospital IMEC"  ← nome explícito do hospital
+//   • "CNES.......: 0929646"         ← CNES exclusivo do hospital
+//   • "Sysmex XN-550"                ← analisador hematológico
+//   • "CRBM-3 3413"                  ← responsável técnico
+//
+// O laudo do IMEC usa o mesmo formato dots-padded do Pio X (provavelmente o
+// mesmo LIS vendor), então o discriminador entre eles é MINDRAY (Pio X) vs
+// Sysmex (IMEC) ou, de forma mais robusta, o nome do hospital.
+//
+// PHASE 3a.1: só roteamento. parse() delega pro parsePDFText. Patterns
+// específicos vão sendo migrados em phases seguintes conforme a gente
+// detecta particularidades.
+const IMECLab = {
+  id: 'IMEC',
+  description: 'Hospital IMEC (Ceres-GO, pasta legado biocentro)',
+  fingerprint(text) {
+    if (!text) return 0;
+    let score = 0;
+    // Marcador mais explícito: nome do hospital
+    if (/\bHospital\s+IMEC\b/i.test(text)) score += 10;
+    // CNES exclusivo do hospital
+    if (/CNES[\s.:]*0929646/i.test(text)) score += 8;
+    // Analisador hematológico específico
+    if (/Sysmex\s+XN-550/i.test(text)) score += 5;
+    // CRBM do responsável técnico (menos robusto — pode mudar com rotatividade)
+    if (/CRBM-3\s*3413/i.test(text)) score += 3;
+    return score;
+  },
+  parse(text) {
+    // Phase 3a.1: delega pro parser genérico. Phases seguintes vão migrar
+    // patterns IMEC-specific se houver (ex: formato "Data Nasc..:" no header).
+    const format = detectFormat(text);
+    return parsePDFText(text, format);
+  }
+};
+LabRegistry.register(IMECLab);
 
 // =============================================================================
 // Test harness — runLabFixtures()

@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v25 (Phase 3a.1: fingerprint PioX mais estrito, só dots-padded)
-const CACHE = 'clinboard-v25';
+// clinBoard Service Worker — v26 (Phase 3a.2: PioX gate em MINDRAY + IMECLab registrado)
+const CACHE = 'clinboard-v26';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [
