@@ -1819,7 +1819,7 @@ const NAME_MAP = {
   'ATIVIDADE PROTROMBINA':'TP - Atividade','ATIVIDADE':'TP - Atividade',
   'TAP (%)':'TP - Atividade','TAP':'TP (segundos)','RNI':'INR','INR':'INR',
   'TEMPO DE PROTROMBINA':'TP (segundos)','TEMPO DE PROTOMBINA':'TP (segundos)',
-  'TP':'TP - Atividade',
+  'TP':'TP (segundos)',
   'TEMPO DE TROMBOPLASTINA PARCIAL ATIVADO':'TTPA','TTPA':'TTPA',
   'TEMPO DE TROMBOPLASTINA PARCIAL':'TTPA',
   'PH':'pH','PCO2':'pCO2','PO2':'pO2','TCO2':'TCO2','HCO3':'HCO3',
@@ -2107,6 +2107,14 @@ let _currentLabSkipExtra = null;
 function skipLine(line, extraRegex) {
   const t = line.trim();
   if (/^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido\s|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica|Referência\s|Referência:|Refer[êe]ncia\s+Adultos|Recém-Nascidos:|Rec[ée]m-Nascidos:|Hora\s+da\s+[Cc]oleta|Evolução\s+do\s+paciente|Notas:|Material\s+biológico|Condições\s+do\s+Paciente|Local\s+da\s+pun[çc][ãa]o|Press[ãa]o\s+(Inicial|Final)|Adultos:|ADULTOS:|Resultado\s*$|VALOR\s+DE\s+REFER|VALORES\s+DE\s+REFER)/i.test(t)) return true;
+  // Phase 6d: pular linhas de tabela pediátrica por idade (PioX tem tabelas ref
+  // tipo "Até 5 meses  12 - 122 U/L", "6 meses a 11 meses 1 - 39 U/L", "1 a 12 anos",
+  // "Recém-Nascido: 8,4 - 25,8 mg/dL", "Crianças < a 7 anos: 13 - 45 U/L", etc).
+  // Sem isso parseParamRow pega "Até" ou "1" como nome e gera lixo nos resultados.
+  if (/^(At[ée]\s+\d|Rec[ée]m[\s-]?[Nn]ascid|Crian[çc]a|Mulher|Homem|Prematuro|Adulto|Idade)\b/i.test(t)) return true;
+  if (/^\d+\s+(a|\-|–|até)\s+\d+\s+(dia|mes|mês|ano)/i.test(t)) return true;
+  if (/^\d+\s+(Dia|Mes|M[eê]s|Ano)s?\s+a\s+/i.test(t)) return true;
+  if (/^[>≥<≤]\s*\d+\s+(Ano|Mes|M[eê]s|Dia)/i.test(t)) return true;
   const extra = extraRegex || _currentLabSkipExtra;
   if (extra && extra.test(t)) return true;
   return false;
@@ -2498,6 +2506,40 @@ function parsePDFText(text) {
       continue;
     }
 
+    // Phase 6c: "Exame: NOME" — formato Núcleo e outros LIS que prefixam o nome
+    // do exame com "Exame:". Pega tudo depois do ":" como nome do exame atual.
+    // Exclui "Exame Físico", "Exame Microscópico" etc. que são sub-seções de EAS.
+    const examPrefixMatch = line.match(/^Exame\s*:\s*(.+?)\s*(?:Id\s+Exame.*)?$/i);
+    if (examPrefixMatch) {
+      const candidate = examPrefixMatch[1].trim().replace(/\s{2,}.*$/, '');
+      if (candidate && candidate.length >= 2 && candidate.length < 60 &&
+          !/^(f[ií]sico|microsc[óo]pico|qu[ií]mico|bioqu[ií]mico)/i.test(candidate) &&
+          !isMultiHeader(candidate) &&
+          !isEASHeader(candidate)) {
+        inMulti = false;
+        inLiquor = false;
+        currentExamName = candidate;
+        pendingResult = null;
+        // Phase 6c: skip qualquer pseudo-header tipo "BIOQUIMICA INTERNA" que
+        // apareça entre "Exame: UREIA" e "Resultado...: 127,9 mg/dL". Sem isso,
+        // BIOQUIMICA INTERNA flipava inMulti=true e a linha Resultado sumia.
+        // Varre as próximas 3 linhas até achar Resultado ou sair do bloco.
+        for (let k = i + 1; k < Math.min(i + 4, lines.length); k++) {
+          const lk = lines[k].trim();
+          if (!lk) continue;
+          if (/^Resultado[\s.:>]/i.test(lk)) break;
+          if (/^Material\s*:|^M[eé]todo\s*:/i.test(lk)) continue;
+          // Pula linhas curtas em caps (pseudo-headers tipo "BIOQUIMICA INTERNA")
+          if (/^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ\s]{3,40}$/.test(lk)) {
+            // marca pra pular ao ser processada
+            lines[k] = '__SKIP_PSEUDO_HEADER__';
+          }
+        }
+        continue;
+      }
+    }
+    if (line === '__SKIP_PSEUDO_HEADER__') continue;
+
     // SINGLE EXAM: detect exam name line (all-caps, no numbers, not a section)
     // Then look for "Resultado:" in next few lines
     // Allow "-" in name (e.g. "TGO -TRANSAMINASE OXALACETICA", "TGP - TRANSAMINASE PIRUVICA")
@@ -2515,7 +2557,8 @@ function parsePDFText(text) {
     }
 
     // Match "Resultado: VALUE UNIT"
-    const resMatch = line.match(/[Rr]esultado[s]?\s*[.:>]?\s*:?\s*([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^·0-9]+)?/);
+    // Phase 6c: aceita padding dots do Núcleo "Resultado.............: 6,7 mg/dL"
+    const resMatch = line.match(/[Rr]esultado[s]?[\s.:>]*:\s*([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^·0-9]+)?/);
     if (resMatch && !inMulti) {
       const val = pNum(resMatch[1]);
       const unit = (resMatch[2]||'').trim();
@@ -2648,8 +2691,12 @@ function parsePDFText(text) {
       row.date = date;
       row.status = getStatus(row.value,row.refMin,row.refMax);
       if (!SKIP_NAMES.has(row.name.toUpperCase())) {
-        // Don't duplicate
-        const dup = results.find(r=>r.name===row.name && r.date===row.date && String(r.value)===String(row.value));
+        // Phase 6c: second-pass dedup precisa normalizar " (U)" suffix (marcador
+        // EAS urina) pra não duplicar pH/Leucócitos/Hemácias/Tubulares quando o
+        // arquivo de EAS (Núcleo) também tem ref range matchável por parseParamRow.
+        const stripU = s => String(s).replace(/\s*\(U\)\s*$/, '').trim().toLowerCase();
+        const rn = stripU(row.name);
+        const dup = results.find(r => stripU(r.name)===rn && r.date===row.date && String(r.value)===String(row.value));
         if (!dup) results.push(row);
       }
     }
@@ -3443,7 +3490,7 @@ const EAS_NAME_MAP = {
   'FLORA BACTERIANA':'Flora Bacteriana',
   'BACTÉRIAS':'Flora Bacteriana','BACTERIAS':'Flora Bacteriana',
   'LEVEDURAS':'Leveduras','CRISTAIS':'Cristais',
-  'MUCO':'Filamentos de Muco','FILAMENTOS DE MUCO':'Filamentos de Muco',
+  'MUCO':'Filamentos de Muco','FILAMENTOS DE MUCO':'Filamentos de Muco','FILAMENTO DE MUCO':'Filamentos de Muco',
   'ESPERMATOZOIDES':'Espermatozoides','ESPERMATOZÓIDES':'Espermatozoides',
 };
 // Add EAS canonical names to whitelist
@@ -3465,8 +3512,10 @@ const EAS_QUAL_MAP = {
 };
 
 function isEASHeader(line) {
-  const t = line.trim().toUpperCase().replace(/[-–\s]+/g,' ');
-  return /^(EAS|EAS ROTINA DE URINA|ROTINA DE URINA|URINA PARCIAL|URINÁLISE|URINALISE|URINA TIPO I|EXAME DE URINA|EAS URINA)/.test(t);
+  // Phase 6c: aceita prefixo "Exame:" (formato Núcleo) antes de matchear o tipo
+  let t = line.trim().toUpperCase().replace(/[-–\s]+/g,' ');
+  t = t.replace(/^EXAME\s*:\s*/, '');
+  return /^(EAS\b|ROTINA DE URINA|URINA PARCIAL|URINÁLISE|URINALISE|URINA TIPO I|EXAME DE URINA)/.test(t);
 }
 
 function normEASName(raw) {
@@ -3479,6 +3528,14 @@ function buildEASResult(name, rawVal, date) {
   const t = rawVal.trim();
   if (!t || t.length < 1) return null;
   const upper = t.toUpperCase().replace(/\s+/g,' ');
+  // Phase 6c: semi-quantitativo "+", "++", "+++", "++/4" etc.
+  // Status = low (1 cruz), high (2-3 cruzes), critico (4 cruzes)
+  const plusM = upper.match(/^(\+{1,4})(?:\s*\/\s*[0-9]+)?$/);
+  if (plusM) {
+    const crosses = plusM[1].length;
+    const st = crosses === 1 ? 'low' : (crosses >= 3 ? 'high' : 'low');
+    return {name, value:crosses, valueStr:t, unit:'', refMin:null, refMax:null, date, status:st, isQualitative:true, known:true};
+  }
   // Check qualitative map (exact then prefix)
   for (const [key, st] of Object.entries(EAS_QUAL_MAP)) {
     if (upper === key || upper.startsWith(key+' ') || upper.startsWith(key+'/')) {
