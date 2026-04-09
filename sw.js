@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v27 (Phase 3b: NucleoLab registrado via SGL PCLAB ONLINE)
-const CACHE = 'clinboard-v27';
+// clinBoard Service Worker — v28 (Phase 4: cleanup + C1 format explícito nas strategies)
+const CACHE = 'clinboard-v28';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

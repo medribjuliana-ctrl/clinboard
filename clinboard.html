@@ -2654,8 +2654,9 @@ function parsePDFText(text, format) {
 // =============================================================================
 //
 // Cada estratégia representa o parser de um laboratório específico. A migração
-// é feita laboratório-por-laboratório (HOC, PioX, HUGO, Citomed) com fixtures
-// em /fixtures/<lab>/ servindo como testes de regressão.
+// é feita laboratório-por-laboratório (HOC, PioX, IMEC, Núcleo já migrados;
+// HUGO e Citomed pendentes) com fixtures em /fixtures/<lab>/ servindo como
+// testes de regressão.
 //
 // Interface:
 //   {
@@ -2665,8 +2666,8 @@ function parsePDFText(text, format) {
 //     parse(text) → results[],              // mesma forma de parsePDFText
 //   }
 //
-// O GenericLab abaixo encapsula o parsePDFText atual SEM mudança de comportamento.
-// Estratégias específicas serão extraídas em Phase 2.
+// O GenericLab abaixo encapsula o parsePDFText atual SEM mudança de comportamento
+// e serve de fallback quando nenhum fingerprint marca pontos.
 
 const LabRegistry = {
   strategies: [],
@@ -2757,14 +2758,16 @@ const HOCLab = {
     if (/VALOR\s+CR[ÍI]TICO\s+(BAIXO|ALTO)/i.test(text)) score += 3;
     return score;
   },
+  // Phase 4 (C1): format explícito em vez de detectFormat(text). O HOC sempre
+  // entra no caminho genérico do parsePDFText (single-line EXAM: VALUE habilitado).
+  format: 'GENERIC',
   parse(text) {
     // Phase 2b/2c: ativa skipPatterns + multiSections específicos do HOC
     // durante o parse, e restaura no finally pra não vazar pra outros labs.
     _currentLabSkipExtra = HOCLab.skipPatterns;
     _currentLabMultiExtra = HOCLab.multiSections;
     try {
-      const format = detectFormat(text);
-      return parsePDFText(text, format);
+      return parsePDFText(text, HOCLab.format);
     } finally {
       _currentLabSkipExtra = null;
       _currentLabMultiExtra = null;
@@ -2824,11 +2827,14 @@ const PioXLab = {
     if (/Hem[aá]cias\.{3,}\s*:/i.test(text)) score += 1;
     return score;
   },
+  // Phase 4 (C1): format explícito. PioX usa o caminho 'PIOX' do parser, que
+  // desabilita o matcher single-line EXAM: VALUE (evita duplicatas com o
+  // parsing multi-linha próprio do formato dots-padded).
+  format: 'PIOX',
   parse(text) {
     // Phase 3a: delega 100% pro parser genérico. Zero mudança de comportamento.
     // Nas phases seguintes vamos identificar e migrar patterns específicos.
-    const format = detectFormat(text);
-    return parsePDFText(text, format);
+    return parsePDFText(text, PioXLab.format);
   }
 };
 LabRegistry.register(PioXLab);
@@ -2870,11 +2876,14 @@ const IMECLab = {
     if (/CRBM-3\s*3413/i.test(text)) score += 3;
     return score;
   },
+  // Phase 4 (C1): format explícito = 'GENERIC'. Antes chamávamos
+  // detectFormat(text), que podia devolver 'BIOCENTRO' se o texto contivesse
+  // a substring "biocentro" no rodapé do laudo — e isso desabilitava
+  // silenciosamente o matcher single-line. Como os fixtures do IMEC precisam
+  // do caminho genérico, fixamos aqui.
+  format: 'GENERIC',
   parse(text) {
-    // Phase 3a.1: delega pro parser genérico. Phases seguintes vão migrar
-    // patterns IMEC-specific se houver (ex: formato "Data Nasc..:" no header).
-    const format = detectFormat(text);
-    return parsePDFText(text, format);
+    return parsePDFText(text, IMECLab.format);
   }
 };
 LabRegistry.register(IMECLab);
@@ -2919,11 +2928,12 @@ const NucleoLab = {
     if (/ABX-MICROS\s*60/i.test(text)) score += 3;
     return score;
   },
+  // Phase 4 (C1): format explícito = 'GENERIC'.
+  format: 'GENERIC',
   parse(text) {
     // Phase 3b: delega pro parser genérico. Patterns específicos do Núcleo
     // (se houver) vão ser migrados em phases seguintes.
-    const format = detectFormat(text);
-    return parsePDFText(text, format);
+    return parsePDFText(text, NucleoLab.format);
   }
 };
 LabRegistry.register(NucleoLab);
@@ -2966,7 +2976,7 @@ async function runLabFixtures(opts = {}) {
       labs = [...labSet];
     } else {
       // Modo fetch: tenta tanto labs registrados quanto pastas conhecidas
-      const known = ['hoc','piox','hugo','citomed','biocentro','nucleo','generic'];
+      const known = ['hoc','piox','imec','nucleo','hugo','citomed','generic'];
       const registered = LabRegistry.list().map(s => s.id.toLowerCase());
       labs = [...new Set([...registered, ...known])];
     }
@@ -3124,8 +3134,8 @@ function adminListStrategies() {
     lines.push(`  • ${s.id}  —  ${s.description || '(sem descrição)'}`);
   }
   lines.push('');
-  lines.push('Em Phase 1, apenas GenericLab está ativo (delega para parsePDFText).');
-  lines.push('Phase 2: extrair HOCLab, PioXLab, HUGOLab, CitomedLab.');
+  lines.push('Estratégias ativas: HOC, PioX, IMEC, Núcleo + GenericLab (fallback).');
+  lines.push('Pendentes: HUGOLab, CitomedLab (aguardando fixtures).');
   adminLog(lines.join('\n'), true);
 }
 
@@ -3526,7 +3536,8 @@ async function processFile(file) {
       return;
     }
     extractedResults = results.map(r=>({...r,included:r.known!==false}));
-    renderExtracted(format, date);
+    const labKey = (detectedLab && detectedLab.id) || format;
+    renderExtracted(labKey, date);
     showUploadStep(3);
     document.getElementById('btn-save-lab').style.display = '';
   } catch(e) {
@@ -3628,7 +3639,16 @@ function _updateUnknownBanner() {
 
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-const LAB_LABELS = {HUGO:'HUGO / Albert Einstein',CITOMED:'Citomed (HOC)',BIOCENTRO:'Biocentro (IMEC)',PIOX:'São Pio X',GENERIC:'Laboratório genérico'};
+const LAB_LABELS = {
+  HOC:'Hospital Ortopédico de Ceres',
+  PIOX:'Hospital São Pio X',
+  IMEC:'Hospital IMEC (Ceres)',
+  NUCLEO:'Núcleo Diagnósticos',
+  HUGO:'HUGO / Albert Einstein',
+  CITOMED:'Citomed',
+  BIOCENTRO:'Biocentro',
+  GENERIC:'Laboratório genérico'
+};
 
 function renderExtracted(format, date) {
   document.getElementById('ext-date').textContent = date;
