@@ -2879,6 +2879,55 @@ const IMECLab = {
 };
 LabRegistry.register(IMECLab);
 
+// -----------------------------------------------------------------------------
+// NucleoLab — Núcleo Diagnósticos Laboratório
+// -----------------------------------------------------------------------------
+// Descoberta na Phase 3b: o laudo do Núcleo **não menciona o nome do
+// laboratório em lugar nenhum** — nem no header nem no footer. O que ele
+// mostra, porém, é o software LIS que o gera:
+//
+//   • Header (toda página): "SGL PCLAB ONLINE"
+//   • Footer do laudo:      "validacao.pclabonline.com.br" (URL de validação
+//                            digital com hash HMAC)
+//   • Analisador hemat.:    "ABX-MICROS 60"
+//
+// Núcleo usa o mesmo formato dots-padded do Pio X e IMEC — quarto caso
+// confirmando que esse formato pertence a um ecossistema regional de LIS
+// (provavelmente um vendor que atende vários laboratórios de Goiás),
+// não a um lab específico. Os discriminadores reais entre os labs são:
+//
+//   HOC   → CRBM 15121, ERITOGRAMA (typo), "VALOR CRÍTICO BAIXO/ALTO"
+//   PioX  → MINDRAY BC-3200 (sem outros marcadores)
+//   IMEC  → "Hospital IMEC", CNES 0929646, Sysmex XN-550
+//   NUCLEO → "SGL PCLAB ONLINE", pclabonline.com.br, ABX-MICROS 60
+//
+// Observação: "SGL PCLAB ONLINE" é o nome do vendor do LIS, não do lab.
+// Se no futuro outro lab também começar a usar PCLab Online, o fingerprint
+// vai precisar de discriminador adicional. Por enquanto, no universo de 5
+// labs conhecidos, PCLAB é equivalente a NUCLEO.
+const NucleoLab = {
+  id: 'NUCLEO',
+  description: 'Núcleo Diagnósticos (LIS: SGL PCLab Online)',
+  fingerprint(text) {
+    if (!text) return 0;
+    let score = 0;
+    // Header do LIS — aparece em toda página do laudo
+    if (/SGL\s+PCLAB\s+ONLINE/i.test(text)) score += 10;
+    // Footer do laudo com URL de validação digital
+    if (/pclabonline\.com\.br/i.test(text)) score += 5;
+    // Analisador hematológico específico (quando há hemograma)
+    if (/ABX-MICROS\s*60/i.test(text)) score += 3;
+    return score;
+  },
+  parse(text) {
+    // Phase 3b: delega pro parser genérico. Patterns específicos do Núcleo
+    // (se houver) vão ser migrados em phases seguintes.
+    const format = detectFormat(text);
+    return parsePDFText(text, format);
+  }
+};
+LabRegistry.register(NucleoLab);
+
 // =============================================================================
 // Test harness — runLabFixtures()
 // =============================================================================

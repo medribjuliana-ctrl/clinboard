@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v26 (Phase 3a.2: PioX gate em MINDRAY + IMECLab registrado)
-const CACHE = 'clinboard-v26';
+// clinBoard Service Worker — v27 (Phase 3b: NucleoLab registrado via SGL PCLAB ONLINE)
+const CACHE = 'clinboard-v27';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [
