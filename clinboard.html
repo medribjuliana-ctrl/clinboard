@@ -2773,6 +2773,55 @@ const HOCLab = {
 };
 LabRegistry.register(HOCLab);
 
+// -----------------------------------------------------------------------------
+// PioXLab — Hospital São Pio X
+// -----------------------------------------------------------------------------
+// Característica dominante: o laudo **não tem cabeçalho identificador do
+// hospital** (nem logo, nem CRBM, nem CNES). O PDF é gerado por uma
+// ferramenta (pdf-lib) sem metadata. Então o fingerprint vem 100% da
+// **convenção tipográfica** do LIS:
+//
+//   • Nomes de parâmetros com padding de pontos até coluna fixa:
+//       "Hemácias......:", "VCM...........:", "CHCM..........:",
+//       "RDW...........:", "VPM...........:", "PDW...........:",
+//       "PCT...........:", "Plaquetas.....:", "Hemoglobinas..:"
+//     É um padrão herdado de impressoras matriciais/ticket printers, muito
+//     específico desse gerador de laudo.
+//   • Analisador hematológico: "Automação MINDRAY BC-3200"
+//   • Rótulo curto de prontuário: "Pront.:" (HOC usa outros formatos)
+//   • "ERITROGRAMA" COM R (o correto) — contraste importante vs HOC
+//
+// PHASE 3a: só roteamento. parse() delega pro parsePDFText. Sem patterns
+// migrados ainda. Se os 3 fixtures (pio1/pio2/pio3) continuam passando como
+// antes mas agora como "detectado: PIOX", a arquitetura passou no teste de
+// extensibilidade.
+const PioXLab = {
+  id: 'PIOX',
+  description: 'Hospital São Pio X (formato dots-padded, MINDRAY BC-3200)',
+  fingerprint(text) {
+    if (!text) return 0;
+    let score = 0;
+    // Padding com pontos nos nomes de hemograma é assinatura tipográfica
+    // extremamente específica do LIS do Pio X. Três matches independentes
+    // pra robustez.
+    if (/VCM\.{3,}\s*:/.test(text)) score += 5;
+    if (/CHCM\.{3,}\s*:/.test(text)) score += 3;
+    if (/Hem[aá]cias\.{3,}\s*:/i.test(text)) score += 3;
+    // Analisador hematológico específico
+    if (/MINDRAY\s+BC-3200/i.test(text)) score += 3;
+    // Rótulo "Pront.:" curto no cabeçalho do paciente
+    if (/\bPront\.\s*:/.test(text)) score += 2;
+    return score;
+  },
+  parse(text) {
+    // Phase 3a: delega 100% pro parser genérico. Zero mudança de comportamento.
+    // Nas phases seguintes vamos identificar e migrar patterns específicos.
+    const format = detectFormat(text);
+    return parsePDFText(text, format);
+  }
+};
+LabRegistry.register(PioXLab);
+
 // =============================================================================
 // Test harness — runLabFixtures()
 // =============================================================================

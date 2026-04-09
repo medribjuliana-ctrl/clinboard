@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v23 (Phase 2c: ERITOGRAMA typo migrado pro HOCLab.multiSections)
-const CACHE = 'clinboard-v23';
+// clinBoard Service Worker — v24 (Phase 3a: PioXLab registrado com fingerprint dots-padded)
+const CACHE = 'clinboard-v24';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [
