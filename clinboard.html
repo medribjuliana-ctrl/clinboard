@@ -2192,7 +2192,7 @@ let _currentLabSkipExtra = null;
 // Lines to skip
 function skipLine(line, extraRegex) {
   const t = line.trim();
-  if (/^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido\s|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica|Referência\s|Referência:|Refer[êe]ncia\s+Adultos|Recém-Nascidos:|Rec[ée]m-Nascidos:|Hora\s+da\s+[Cc]oleta|Evolução\s+do\s+paciente|Notas:|Material\s+biológico|Condições\s+do\s+Paciente|Local\s+da\s+pun[çc][ãa]o|Press[ãa]o\s+(Inicial|Final)|Adultos:|ADULTOS:|Resultado\s*$|VALOR\s+DE\s+REFER|VALORES\s+DE\s+REFER)/i.test(t)) return true;
+  if (/^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido\s|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica|Referência\s|Referência:|Refer[êe]ncia\s+Adultos|Recém-Nascidos:|Rec[ée]m-Nascidos:|Hora\s+da\s+[Cc]oleta|Evolução\s+do\s+paciente|Notas:|Material\s+biológico|Condições\s+do\s+Paciente|Local\s+da\s+pun[çc][ãa]o|Press[ãa]o\s+(Inicial|Final)|Adultos:|ADULTOS:|Resultado\s*$|VALOR\s+DE\s+REFER|VALORES\s+DE\s+REFER|Valide\s+seu\s+laudo|com\s+o\s+QR\s+Code|Token\s*:|Laudo\s+assinado|Os\s+exames\s+sofrem|Somente\s+seu\s+m[ée]dico|C[óo]d\.\s+Pac|Assinado\s+Por|Doutor\(a\)|Nasc\.\.|Sexo\s*:|P[áa]gina\s*\d|\[Coleta|\[Convenio|Tipo\s+de\s+Coleta)/i.test(t)) return true;
   // Phase 6d: pular linhas de tabela pediátrica por idade (PioX tem tabelas ref
   // tipo "Até 5 meses  12 - 122 U/L", "6 meses a 11 meses 1 - 39 U/L", "1 a 12 anos",
   // "Recém-Nascido: 8,4 - 25,8 mg/dL", "Crianças < a 7 anos: 13 - 45 U/L", etc).
@@ -2798,7 +2798,7 @@ function parsePDFText(text) {
     const isExamHeader = /^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\/\-,]*$/.test(line) &&
                          line.length > 3 && line.length < 60 &&
                          !isMultiHeader(line) &&
-                         !/^(VALORES|VALOR|SÉRIE|ERITR?OGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI|RESULTADO[S]?|REFER[ÊE]NCIA[S]?|IDADE\s|SEXO\s|ELEMENTOS\s+ANORMAIS|SEDIMENTOSCOPIA|N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|N[ÃA]O\s+DETECT|DETECT[AÁ]VEL|N[ÃA]O\s+IMUNE|IMUNE|NOTA\s*:|ANALITO|MATERIAL\s*:|M[EÉ]TODO\s*:)/i.test(line);
+                         !/^(VALORES|VALOR|SÉRIE|ERITR?OGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI|RESULTADO[S]?|REFER[ÊE]NCIA[S]?|IDADE\s|SEXO\s|ELEMENTOS\s+ANORMAIS|SEDIMENTOSCOPIA|N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|N[ÃA]O\s+DETECT|DETECT[AÁ]VEL|N[ÃA]O\s+IMUNE|IMUNE|NOTA\s*:|ANALITO|MATERIAL\s*:|M[EÉ]TODO\s*:|VALIDE\s+SEU|COM\s+O\s+QR|ARTERIAL|VENOSO?A?\b)/i.test(line);
 
     if (isExamHeader) {
       inMulti = false;  // Exit multi-param mode when a new single exam header is detected
@@ -2956,20 +2956,28 @@ function parsePDFText(text) {
 
     // Multi-param row (hemograma, gasometria, líquor, etc.)
     if (inMulti) {
+      // Phase 6i: detecta header de tabela de referência ANTES de skipLine, para
+      // que inMultiRefSkip seja ativado mesmo quando skipLine também captura a linha
+      // (ex: "Valores de Referência" capturada por VALORES\s+DE\s+REFER em skipLine).
+      if (/^\s*(?:valores\s+de\s+)?refer[eê]ncia\s*:?\s*$/i.test(line)) {
+        inMultiRefSkip = true; refSkipLineIdx.add(i); continue;
+      }
+      if (inMultiRefSkip) {
+        // Phase 6i: sai do ref-skip quando encontra uma nova seção de exame
+        // (examPrefixMatch/isMultiHeader são checados ANTES do bloco inMulti,
+        // mas se linhas estruturais do PDF passarem, o skip precisa ter um exit).
+        // Linhas como "[Coleta:", "[Convenio:", "Assinado Por:" indicam fim da ref table.
+        if (/^\[Coleta|\[Convenio|Assinado\s+Por|Dt\.\s+Cadastro/i.test(line)) {
+          inMultiRefSkip = false;
+        }
+        refSkipLineIdx.add(i); continue;
+      }
       if (skipLine(line)) continue;
       // Check for end of section: long separator (min 3 chars to evitar
       // confusão com indicator markers `*` ou `|*|` da gasometria Núcleo).
       if (/^[-=]{3,}$/.test(line)) { inMulti=false; inLiquor=false; continue; }
       // Skip linhas que são apenas indicator-bar marker da gasometria Núcleo
       if (/^[\s_|*]+$/.test(line)) continue;
-      // Phase 6h: Núcleo bilirrubinas tem uma tabela de "referencia" repetindo
-      // os params com ranges (sem valor de paciente). Detecta header standalone
-      // "referencia" / "referência" / "valores de referencia" e marca skip-mode
-      // até a próxima exam header / fim de multi.
-      if (/^\s*(?:valores\s+de\s+)?refer[eê]ncia\s*:?\s*$/i.test(line)) {
-        inMultiRefSkip = true; refSkipLineIdx.add(i); continue;
-      }
-      if (inMultiRefSkip) { refSkipLineIdx.add(i); continue; }
       const row = parseParamRow(line);
       if (row) {
         // Em contexto de líquor, renomeia parâmetros que conflitam com exames de sangue

@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v42 (Phase 6h: Nota block skip, qualitative exam-header exclusion, pNum 6.000 fix)
-const CACHE = 'clinboard-v42';
+// clinBoard Service Worker — v43 (Phase 6i: dual gasometria fix, skipLine hardening, inMultiRefSkip reorder)
+const CACHE = 'clinboard-v43';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [
