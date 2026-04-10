@@ -2192,7 +2192,7 @@ let _currentLabSkipExtra = null;
 // Lines to skip
 function skipLine(line, extraRegex) {
   const t = line.trim();
-  if (/^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido\s|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica|Referência\s|Referência:|Refer[êe]ncia\s+Adultos|Recém-Nascidos:|Rec[ée]m-Nascidos:|Hora\s+da\s+[Cc]oleta|Evolução\s+do\s+paciente|Notas:|Material\s+biológico|Condições\s+do\s+Paciente|Local\s+da\s+pun[çc][ãa]o|Press[ãa]o\s+(Inicial|Final)|Adultos:|ADULTOS:|Resultado\s*$|VALOR\s+DE\s+REFER|VALORES\s+DE\s+REFER|Valide\s+seu\s+laudo|com\s+o\s+QR\s+Code|Token\s*:|Laudo\s+assinado|Os\s+exames\s+sofrem|Somente\s+seu\s+m[ée]dico|C[óo]d\.\s+Pac|Assinado\s+Por|Doutor\(a\)|Nasc\.\.|Sexo\s*:|P[áa]gina\s*\d|\[Coleta|\[Convenio|Tipo\s+de\s+Coleta)/i.test(t)) return true;
+  if (/^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido\s|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica|Referência\s|Referência:|Refer[êe]ncia\s+Adultos|Recém-Nascidos:|Rec[ée]m-Nascidos:|Hora\s+da\s+[Cc]oleta|Evolução\s+do\s+paciente|Notas:|Material\s+biológico|Condições\s+do\s+Paciente|Local\s+da\s+pun[çc][ãa]o|Press[ãa]o\s+(Inicial|Final)|Adultos:|ADULTOS:|Resultado\s*$|VALOR\s+DE\s+REFER|VALORES\s+DE\s+REFER|Valide\s+seu\s+laudo|com\s+o\s+QR\s+Code|Token\s*:|Laudo\s+assinado|Os\s+exames\s+sofrem|Somente\s+seu\s+m[ée]dico|C[óo]d\.\s+Pac|Assinado\s+Por|Doutor\(a\)|Nasc\.\.|Sexo\s*:|P[áa]gina\s*\d|\[Coleta|\[Convenio|Tipo\s+de\s+Coleta|Seringa\s*$|Id\s+Exame|validacao\.|Plasma\s*:|Indicador)/i.test(t)) return true;
   // Phase 6d: pular linhas de tabela pediátrica por idade (PioX tem tabelas ref
   // tipo "Até 5 meses  12 - 122 U/L", "6 meses a 11 meses 1 - 39 U/L", "1 a 12 anos",
   // "Recém-Nascido: 8,4 - 25,8 mg/dL", "Crianças < a 7 anos: 13 - 45 U/L", etc).
@@ -2589,6 +2589,7 @@ function parsePDFText(text) {
   const refSkipLineIdx = new Set();  // Phase 6h: indices marcados como ref-skip (p/ second-pass)
   let inNota = false;  // Phase 6h: skip Nota: blocks (texto livre que PDF.js pode quebrar em linhas soltas)
   let inLiquor = false;  // Rastreia contexto de líquor para sufixo "(LCR)"
+  let _pendingMultiValue = null;  // Phase 6i: valor órfão de linha split (PDF.js gasometria)
   let currentExamName = '';
   let lookingForRef = false;
   let pendingResult = null;
@@ -2739,7 +2740,6 @@ function parsePDFText(text) {
         // Saiu do líquor ao entrar em outra seção principal (hemograma, gasometria, etc.)
         inLiquor = false;
       }
-      console.log('[GASO-DBG] isMultiHeader:', line.trim(), '→ gaso:', _currentGasoContext);
       // Sub-headers de líquor mantêm inLiquor ativo (não alteram)
       continue;
     }
@@ -2750,7 +2750,13 @@ function parsePDFText(text) {
     const examPrefixMatch = line.match(/^Exame\s*:\s*(.+?)\s*(?:Id\s+Exame.*)?$/i);
     if (examPrefixMatch) {
       inNota = false; // Sai de Nota: block ao encontrar novo exame
-      const candidate = examPrefixMatch[1].trim().replace(/\s{2,}.*$/, '').replace(/\.+$/,'');
+      // Phase 6i: replace(/\s{2,}.*$/) era agressivo — cortava "CALCIO    IONICO VENOSO"
+      // do PDF.js (espaços extras entre palavras). Agora remove metadata patterns
+      // explícitos e normaliza espaços internos para espaço simples.
+      const candidate = examPrefixMatch[1].trim()
+        .replace(/\s{2,}(?:Id\s+Exame|Material\s*:|M[eé]todo|Token\s*:|\d{6,}).*/i, '')
+        .replace(/\s{2,}/g, ' ')
+        .replace(/\.+$/,'').trim();
       // Phase 6g: se o candidato FOR uma multi-section (ex: GASOMETRIA
       // ARTERIAL, GASOMETRIA VENOSA), ativa inMulti com contexto. Antes,
       // o isMultiHeader(line) da linha bruta falhava por causa do "Id
@@ -2765,7 +2771,6 @@ function parsePDFText(text) {
         else if (/^GASOMETRIA\s+VENOSA/.test(cUp)) _currentGasoContext = 'Venosa';
         else _currentGasoContext = null;
         if (/L[ÍI]QUOR/.test(cUp)) inLiquor = true; else inLiquor = false;
-        console.log('[GASO-DBG] examPrefix MULTI:', candidate, '→ gaso:', _currentGasoContext);
         continue;
       }
       if (candidate && candidate.length >= 2 && candidate.length < 60 &&
@@ -2776,7 +2781,6 @@ function parsePDFText(text) {
         inMultiRefSkip = false;
         inLiquor = false;
         _currentGasoContext = null;
-        console.log('[GASO-DBG] examPrefix SINGLE:', candidate, '→ inMulti=false');
         currentExamName = candidate;
         pendingResult = null;
         // Phase 6c: skip qualquer pseudo-header tipo "BIOQUIMICA INTERNA" que
@@ -2799,16 +2803,21 @@ function parsePDFText(text) {
     }
     if (line === '__SKIP_PSEUDO_HEADER__') continue;
 
+    // Phase 6i: skipLine guard antes de isExamHeader — evita que linhas estruturais
+    // (Página2/6, Seringa, Valide seu laudo, etc.) disparem isExamHeader, matando
+    // prematuramente inMulti/gasometria. Antes, skipLine só era chamada dentro dos
+    // blocos inMulti e single-line, permitindo que essas linhas resetassem o estado.
+    if (skipLine(line)) continue;
+
     // SINGLE EXAM: detect exam name line (all-caps, no numbers, not a section)
     // Then look for "Resultado:" in next few lines
     // Allow "-" in name (e.g. "TGO -TRANSAMINASE OXALACETICA", "TGP - TRANSAMINASE PIRUVICA")
     const isExamHeader = /^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\/\-,]*$/.test(line) &&
                          line.length > 3 && line.length < 60 &&
                          !isMultiHeader(line) &&
-                         !/^(VALORES|VALOR|SÉRIE|ERITR?OGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI|RESULTADO[S]?|REFER[ÊE]NCIA[S]?|IDADE\s|SEXO\s|ELEMENTOS\s+ANORMAIS|SEDIMENTOSCOPIA|N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|N[ÃA]O\s+DETECT|DETECT[AÁ]VEL|N[ÃA]O\s+IMUNE|IMUNE|NOTA\s*:|ANALITO|MATERIAL\s*:|M[EÉ]TODO\s*:|VALIDE\s+SEU|COM\s+O\s+QR|ARTERIAL|VENOSO?A?\b)/i.test(line);
+                         !/^(VALORES|VALOR|SÉRIE|ERITR?OGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI|RESULTADO[S]?|REFER[ÊE]NCIA[S]?|IDADE\s|SEXO\s|ELEMENTOS\s+ANORMAIS|SEDIMENTOSCOPIA|N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|N[ÃA]O\s+DETECT|DETECT[AÁ]VEL|N[ÃA]O\s+IMUNE|IMUNE|NOTA\s*:|ANALITO|MATERIAL\s*:|M[EÉ]TODO\s*:|VALIDE\s+SEU|COM\s+O\s+QR|ARTERIAL|VENOSO?A?\b|SERINGA|P[ÁA]GINA)/i.test(line);
 
     if (isExamHeader) {
-      console.log('[GASO-DBG] isExamHeader:', line.trim(), '→ inMulti was:', inMulti, 'gaso was:', _currentGasoContext);
       inMulti = false;  // Exit multi-param mode when a new single exam header is detected
       inMultiRefSkip = false;
       inLiquor = false; // Exit liquor context
@@ -2986,9 +2995,38 @@ function parsePDFText(text) {
       if (/^[-=]{3,}$/.test(line)) { inMulti=false; inLiquor=false; continue; }
       // Skip linhas que são apenas indicator-bar marker da gasometria Núcleo
       if (/^[\s_|*]+$/.test(line)) continue;
-      const row = parseParamRow(line);
+
+      // ─── Phase 6i: PDF.js split-line reconstruction ──────────────────────
+      // O PDF.js pode separar valor e nome em linhas diferentes na gasometria
+      // (Drake) porque as barras de indicador (-) Indicador (+) deslocam as
+      // coordenadas Y dos itens. Padrão:
+      //   "7,33     |   |"   ← valor órfão (com lixo de indicador)
+      //   "pH....................:      *"   ← nome sem valor
+      // Detecta linha de valor órfão e armazena; quando a próxima linha é
+      // nome-sem-valor (dots+colon sem dígito), reconstrói como "nome: valor".
+      let reconstructedLine = null;
+      const cleanForSplit = line.replace(/[\s_|*]+$/,'').trim();
+      // Valor órfão: linha que começa com dígito ou sinal negativo, sem ":" ou nome
+      if (/^[−\-]?\d[0-9.,]*\s*[a-zA-Zµ%\/~³^·°]*$/.test(cleanForSplit) && cleanForSplit.length < 20) {
+        _pendingMultiValue = cleanForSplit;
+        continue;
+      }
+      // Nome-sem-valor: "NAME..........:  <sem dígito>" ou "NAME.........:" (vazio)
+      if (_pendingMultiValue) {
+        const nameOnlyMatch = cleanForSplit.match(/^([A-Za-z0-9][A-Za-záéíóúâêîôûàèìòùãõç0-9\s]*?)\.{2,}\s*:\s*[^0-9−\-]*$/);
+        if (nameOnlyMatch) {
+          // Reconstrói: "pH..........: 7,33"
+          reconstructedLine = cleanForSplit.replace(/:\s*[^0-9−\-]*$/, ':   ' + _pendingMultiValue);
+          _pendingMultiValue = null;
+        } else {
+          // Não era nome-sem-valor; descarta pendingValue (pode ser lixo de indicador)
+          _pendingMultiValue = null;
+        }
+      }
+      // ─── Fim split-line reconstruction ────────────────────────────────────
+
+      const row = parseParamRow(reconstructedLine || line);
       if (row) {
-        console.log('[GASO-DBG] inMulti param:', row.name, '=', row.valueStr||row.value, 'gaso:', _currentGasoContext);
         // Em contexto de líquor, renomeia parâmetros que conflitam com exames de sangue
         if (inLiquor) {
           row.name = _lcrName(row.name);
@@ -4020,11 +4058,6 @@ async function processFile(file) {
     document.getElementById('proc-status').textContent = 'Lendo PDF...';
     const text = await extractPDFText(file);
     document.getElementById('proc-status').textContent = 'Analisando resultados...';
-    // Phase 6i: debug temporário — salva texto extraído pelo PDF.js para diagnóstico
-    window._debugPDFText = text;
-    console.log('=== clinBoard DEBUG: texto extraído pelo PDF.js ===');
-    console.log(text);
-    console.log('=== FIM do texto extraído ===');
     // Phase 5 (C2): roteamento 100% via LabRegistry + fingerprints.
     // detectFormat() foi removido e o parser não recebe mais `format`.
     const { lab: detectedLab, results } = LabRegistry.run(text);
