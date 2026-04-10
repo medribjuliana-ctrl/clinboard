@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v40 (Phase 6h: EAS inline refs Núcleo, Densidade pNum fix, sedimentoscopia refs)
-const CACHE = 'clinboard-v40';
+// clinBoard Service Worker — v42 (Phase 6h: Nota block skip, qualitative exam-header exclusion, pNum 6.000 fix)
+const CACHE = 'clinboard-v42';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

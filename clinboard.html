@@ -951,11 +951,13 @@ function fbScheduleSync() {
 // Usado em renderLabPanel() e downloadLabPDF(). Adicionar novos
 // parâmetros aqui automaticamente atualiza ambos os locais.
 // ======================================================================
-const GROUP_ORDER = ['Hemograma','Gasometria','Bioquímica','Eletrólitos','Inflamatório','Coagulação','Cardíaco','Sorologias','Microbiologia','Líquor','Urinálise','Culturas','Outros'];
+const GROUP_ORDER = ['Hemograma','Gasometria Arterial','Gasometria Venosa','Gasometria','Bioquímica','Eletrólitos','Inflamatório','Coagulação','Cardíaco','Sorologias','Microbiologia','Líquor','Urinálise','Culturas','Outros'];
 
 const EXAM_GROUPS = Object.freeze({
   'Hemograma': ['Hemácias','Hemoglobina','Hematócrito','VCM','HCM','CHCM','RDW','Eritroblastos','Leucócitos','Blastos','Promielócitos','Mielócitos','Metamielócitos','Bastonetes','Segmentados','Neutrófilos','Eosinófilos','Basófilos','Linfócitos','Linfócitos Atípicos','Monócitos','Plasmócitos','Plaquetas','VPM','PDW','PCT'],
-  'Gasometria': ['pH (Arterial)','PCO2 (Arterial)','PO2 (Arterial)','HCO3 (Arterial)','BE (Arterial)','O2 CT (Arterial)','O2 Sat (Arterial)','Hct (Arterial)','Sódio (Arterial)','Potássio (Arterial)','Glicose (Arterial)','pH (Venosa)','PCO2 (Venosa)','PO2 (Venosa)','HCO3 (Venosa)','BE (Venosa)','O2 CT (Venosa)','O2 Sat (Venosa)','Hct (Venosa)','Sódio (Venosa)','Potássio (Venosa)','Glicose (Venosa)','Lactato','Lactato Venoso','pH','pCO2','pO2','HCO3','BE','SatO2','TCO2','FiO2','Temperatura'],
+  'Gasometria Arterial': ['pH (Arterial)','PCO2 (Arterial)','PO2 (Arterial)','HCO3 (Arterial)','BE (Arterial)','O2 CT (Arterial)','O2 Sat (Arterial)','Hct (Arterial)','Sódio (Arterial)','Potássio (Arterial)','Glicose (Arterial)','Cálcio iônico','Lactato'],
+  'Gasometria Venosa': ['pH (Venosa)','PCO2 (Venosa)','PO2 (Venosa)','HCO3 (Venosa)','BE (Venosa)','O2 CT (Venosa)','O2 Sat (Venosa)','Hct (Venosa)','Sódio (Venosa)','Potássio (Venosa)','Glicose (Venosa)','Cálcio iônico Venoso','Lactato Venoso'],
+  'Gasometria': ['pH','pCO2','pO2','HCO3','BE','SatO2','TCO2','FiO2','Temperatura'],
   'Bioquímica': ['Ureia','Creatinina','TGO (AST)','TGP (ALT)','Cálcio Total','Bilirrubina Total','Bilirrubina Direta','Bilirrubina Indireta','Albumina','Proteínas Totais','Globulinas','Relação A/G','Fosfatase Alcalina','GGT'],
   'Eletrólitos': ['Sódio','Potássio','Cálcio iônico','Cálcio iônico Venoso','Magnésio','Fósforo','Cloro','Cloretos'],
   'Inflamatório': ['PCR','Procalcitonina','Ferritina','Fibrinogênio','Dímero-D'],
@@ -1705,10 +1707,11 @@ function pNum(s, unitHint) {
     const isCountUnit = unitHint && /\/(mm|µL|uL)|mil\/|x10/i.test(unitHint);
     if (afterDot.length === 3 && /^\d+$/.test(afterDot)) {
       // Phase 6h: exceção para valores de densidade urinária (1.005-1.030)
-      // e similares: se a parte inteira é 1 dígito E afterDot começa com 0,
-      // NÃO é separador de milhar (1.015 ≠ 1015). Mantém como decimal.
+      // e similares: se a parte inteira é 1 dígito E afterDot começa com 0
+      // E NÃO é tudo zeros ("000" = milhar, ex: 6.000 = 6000), trata como
+      // decimal real. "1.015" → 1.015 (densidade), "6.000" → 6000 (milhar).
       const beforeDot = str.slice(0, dotIdx);
-      if (beforeDot.length === 1 && afterDot[0] === '0') {
+      if (beforeDot.length === 1 && afterDot[0] === '0' && !/^0+$/.test(afterDot)) {
         const n = parseFloat(str);
         return isNaN(n) ? null : n;
       }
@@ -2132,6 +2135,14 @@ const PARAM_WHITELIST = new Set([
   // Extras não cobertos como valores do NAME_MAP
   'TP (segundos)','Cálcio Total','FiO2','Temperatura',
   'Blastos','Promielócitos',
+  // Phase 6h: gasometria (Arterial)/(Venosa) — gerados dinamicamente por _gasoRename
+  'pH (Arterial)','PCO2 (Arterial)','PO2 (Arterial)','HCO3 (Arterial)','BE (Arterial)',
+  'O2 CT (Arterial)','O2 Sat (Arterial)','Hct (Arterial)','Sódio (Arterial)',
+  'Potássio (Arterial)','Glicose (Arterial)',
+  'pH (Venosa)','PCO2 (Venosa)','PO2 (Venosa)','HCO3 (Venosa)','BE (Venosa)',
+  'O2 CT (Venosa)','O2 Sat (Venosa)','Hct (Venosa)','Sódio (Venosa)',
+  'Potássio (Venosa)','Glicose (Venosa)',
+  'Cálcio iônico Venoso','Lactato Venoso',
   // Líquor (LCR) — nomes canônicos com sufixo
   'Células (LCR)','Células Nucleadas (LCR)','Hemácias (LCR)','Leucócitos (LCR)',
   'Neutrófilos (LCR)','Linfócitos (LCR)','Monócitos (LCR)','Eosinófilos (LCR)',
@@ -2576,6 +2587,7 @@ function parsePDFText(text) {
   let inMulti = false;
   let inMultiRefSkip = false;  // Phase 6h: skip ref tables dentro de multi (Núcleo bilirrubinas)
   const refSkipLineIdx = new Set();  // Phase 6h: indices marcados como ref-skip (p/ second-pass)
+  let inNota = false;  // Phase 6h: skip Nota: blocks (texto livre que PDF.js pode quebrar em linhas soltas)
   let inLiquor = false;  // Rastreia contexto de líquor para sufixo "(LCR)"
   let currentExamName = '';
   let lookingForRef = false;
@@ -2687,6 +2699,24 @@ function parsePDFText(text) {
       }
     }
 
+    // Phase 6h: detecta blocos "Nota:" / "Obs:" — texto descritivo livre que
+    // PDF.js pode quebrar em linhas soltas ("Dengue", "IgG", etc.), gerando
+    // falsos exam headers. Entra em skip mode até próxima estrutura reconhecida.
+    if (/^\s*(?:Nota|Obs|Nota\s+explicativa)\s*:/i.test(line)) {
+      inNota = true; continue;
+    }
+    if (inNota) {
+      // Sai do Nota: block quando encontra nova estrutura
+      if (/^\s*(?:Exame\s*:|^\[Convenio|^\[Coleta|\[Convenio|\[Coleta|Dt\.\s+Cadastro|Paciente\s*:)/i.test(line) ||
+          isMultiHeader(line)) {
+        inNota = false;
+        // fall through para processar a linha normalmente
+      } else {
+        refSkipLineIdx.add(i); // marca pra second-pass ignorar também
+        continue;
+      }
+    }
+
     // Detect multi-param section header
     if (isMultiHeader(line)) {
       inMulti = true;
@@ -2714,6 +2744,7 @@ function parsePDFText(text) {
     // Exclui "Exame Físico", "Exame Microscópico" etc. que são sub-seções de EAS.
     const examPrefixMatch = line.match(/^Exame\s*:\s*(.+?)\s*(?:Id\s+Exame.*)?$/i);
     if (examPrefixMatch) {
+      inNota = false; // Sai de Nota: block ao encontrar novo exame
       const candidate = examPrefixMatch[1].trim().replace(/\s{2,}.*$/, '').replace(/\.+$/,'');
       // Phase 6g: se o candidato FOR uma multi-section (ex: GASOMETRIA
       // ARTERIAL, GASOMETRIA VENOSA), ativa inMulti com contexto. Antes,
@@ -2767,7 +2798,7 @@ function parsePDFText(text) {
     const isExamHeader = /^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\/\-,]*$/.test(line) &&
                          line.length > 3 && line.length < 60 &&
                          !isMultiHeader(line) &&
-                         !/^(VALORES|VALOR|SÉRIE|ERITR?OGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI|RESULTADO[S]?|REFER[ÊE]NCIA[S]?|IDADE\s|SEXO\s|ELEMENTOS\s+ANORMAIS|SEDIMENTOSCOPIA)/i.test(line);
+                         !/^(VALORES|VALOR|SÉRIE|ERITR?OGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI|RESULTADO[S]?|REFER[ÊE]NCIA[S]?|IDADE\s|SEXO\s|ELEMENTOS\s+ANORMAIS|SEDIMENTOSCOPIA|N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|N[ÃA]O\s+DETECT|DETECT[AÁ]VEL|N[ÃA]O\s+IMUNE|IMUNE|NOTA\s*:|ANALITO|MATERIAL\s*:|M[EÉ]TODO\s*:)/i.test(line);
 
     if (isExamHeader) {
       inMulti = false;  // Exit multi-param mode when a new single exam header is detected
