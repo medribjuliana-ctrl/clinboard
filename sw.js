@@ -1,5 +1,5 @@
 // clinBoard Service Worker — v43 (Phase 6i: dual gasometria fix, skipLine hardening, inMultiRefSkip reorder)
-const CACHE = 'clinboard-v43';
+const CACHE = 'clinboard-v43d';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [
