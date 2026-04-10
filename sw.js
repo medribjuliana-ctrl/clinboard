@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v35 (Phase 6f: HOC líquor — refs DE N A M, qualitativos Aspecto/Cor/Coágulo/VDRL, dedup)
-const CACHE = 'clinboard-v35';
+// clinBoard Service Worker — v40 (Phase 6h: EAS inline refs Núcleo, Densidade pNum fix, sedimentoscopia refs)
+const CACHE = 'clinboard-v40';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

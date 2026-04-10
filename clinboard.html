@@ -955,13 +955,13 @@ const GROUP_ORDER = ['Hemograma','Gasometria','Bioquímica','Eletrólitos','Infl
 
 const EXAM_GROUPS = Object.freeze({
   'Hemograma': ['Hemácias','Hemoglobina','Hematócrito','VCM','HCM','CHCM','RDW','Eritroblastos','Leucócitos','Blastos','Promielócitos','Mielócitos','Metamielócitos','Bastonetes','Segmentados','Neutrófilos','Eosinófilos','Basófilos','Linfócitos','Linfócitos Atípicos','Monócitos','Plasmócitos','Plaquetas','VPM','PDW','PCT'],
-  'Gasometria': ['pH','pCO2','pO2','HCO3','BE','SatO2','TCO2','Lactato','Glicose','FiO2','Temperatura'],
+  'Gasometria': ['pH (Arterial)','PCO2 (Arterial)','PO2 (Arterial)','HCO3 (Arterial)','BE (Arterial)','O2 CT (Arterial)','O2 Sat (Arterial)','Hct (Arterial)','Sódio (Arterial)','Potássio (Arterial)','Glicose (Arterial)','pH (Venosa)','PCO2 (Venosa)','PO2 (Venosa)','HCO3 (Venosa)','BE (Venosa)','O2 CT (Venosa)','O2 Sat (Venosa)','Hct (Venosa)','Sódio (Venosa)','Potássio (Venosa)','Glicose (Venosa)','Lactato','Lactato Venoso','pH','pCO2','pO2','HCO3','BE','SatO2','TCO2','FiO2','Temperatura'],
   'Bioquímica': ['Ureia','Creatinina','TGO (AST)','TGP (ALT)','Cálcio Total','Bilirrubina Total','Bilirrubina Direta','Bilirrubina Indireta','Albumina','Proteínas Totais','Globulinas','Relação A/G','Fosfatase Alcalina','GGT'],
-  'Eletrólitos': ['Sódio','Potássio','Cálcio Iônico','Magnésio','Fósforo','Cloro'],
+  'Eletrólitos': ['Sódio','Potássio','Cálcio iônico','Cálcio iônico Venoso','Magnésio','Fósforo','Cloro','Cloretos'],
   'Inflamatório': ['PCR','Procalcitonina','Ferritina','Fibrinogênio','Dímero-D'],
-  'Coagulação': ['TP - Atividade','TP (segundos)','INR','TTPA'],
-  'Cardíaco': ['CPK','Troponina','BNP'],
-  'Sorologias': ['HIV 1/2','HIV 1/2 (TR)','Toxoplasmose IgG','Toxoplasmose IgM','CMV IgG','CMV IgM','EBV IgG','EBV IgM','EBV VCA IgG','EBV VCA IgM','EBV EBNA IgG','Dengue NS1','Dengue NS1 (TR)','Dengue IgG','Dengue IgM','Dengue (TR)','COVID-19','COVID-19 (TR)','COVID-19 IgG','COVID-19 IgM','COVID-19 Ag','Influenza A','Influenza B','Influenza A/B','Influenza (TR)','HBsAg','Anti-HBs','Anti-HBc IgM','Anti-HBc Total','Anti-HCV','Anti-HAV IgM','Anti-HAV IgG','VDRL','FTA-ABS IgG','FTA-ABS IgM','TR Sífilis','Chagas','Chagas IgG','HTLV I/II'],
+  'Coagulação': ['TP - Atividade','TP (segundos)','INR','TTPA','Tempo de Sangramento','Tempo de Coagulação'],
+  'Cardíaco': ['CPK','CK-MB','Troponina','Troponina (TR)','BNP','NT-proBNP'],
+  'Sorologias': ['HIV 1/2','HIV 1/2 (TR)','Toxoplasmose IgG','Toxoplasmose IgM','CMV IgG','CMV IgM','EBV IgG','EBV IgM','EBV VCA IgG','EBV VCA IgM','EBV EBNA IgG','Sorologia Dengue IgG','Sorologia Dengue IgM','Sorologia Chikungunya IgG','Sorologia Chikungunya IgM','Dengue NS1','Dengue NS1 (TR)','Dengue IgG','Dengue IgM','Dengue (TR)','COVID-19','COVID-19 (TR)','COVID-19 IgG','COVID-19 IgM','COVID-19 Ag','Influenza A','Influenza B','Influenza A/B','Influenza (TR)','HBsAg','Anti-HBs','Anti-HBc IgM','Anti-HBc Total','Anti-HCV','Anti-HAV IgM','Anti-HAV IgG','VDRL','FTA-ABS IgG','FTA-ABS IgM','TR Sífilis','Chagas','Chagas IgG','HTLV I/II'],
   'Microbiologia': ['Toxina A (C. difficile)','Toxina B (C. difficile)'],
   'Líquor': ['Células (LCR)','Células Nucleadas (LCR)','Hemácias (LCR)','Leucócitos (LCR)','Neutrófilos (LCR)','Linfócitos (LCR)','Monócitos (LCR)','Eosinófilos (LCR)','Basófilos (LCR)','Plasmócitos (LCR)','Macrófagos (LCR)','Proteínas (LCR)','Glicose (LCR)','Lactato (LCR)','Cloretos (LCR)','pH (LCR)','VDRL (LCR)'],
   'Urinálise': ['Cor (U)','Aspecto (U)','Depósito','Densidade','pH (U)','Proteínas (U)','Glicose (U)','Cetonas','Bilirrubina (U)','Nitrito','Urobilinogênio','Hemoglobina (U)','Est. Leucocitária','Leucócitos (U)','Hemácias (U)','Cél. Epiteliais','Cél. Escamosas','Cél. Não Escamosas','Cél. Transicionais','Cél. Tubulares','Cilindros','Cilindros Hialinos','Cilindros Patol.','Flora Bacteriana','Leveduras','Cristais','Filamentos de Muco','Espermatozoides'],
@@ -1704,6 +1704,14 @@ function pNum(s, unitHint) {
     // Contexto de contagem: unidades como /mm³, /µL, mil/mm³ → ponto é milhar
     const isCountUnit = unitHint && /\/(mm|µL|uL)|mil\/|x10/i.test(unitHint);
     if (afterDot.length === 3 && /^\d+$/.test(afterDot)) {
+      // Phase 6h: exceção para valores de densidade urinária (1.005-1.030)
+      // e similares: se a parte inteira é 1 dígito E afterDot começa com 0,
+      // NÃO é separador de milhar (1.015 ≠ 1015). Mantém como decimal.
+      const beforeDot = str.slice(0, dotIdx);
+      if (beforeDot.length === 1 && afterDot[0] === '0') {
+        const n = parseFloat(str);
+        return isNaN(n) ? null : n;
+      }
       // "4.500" → 4500 (padrão BR de milhar)
       const n = parseFloat(str.replace(/\./g,''));
       return isNaN(n) ? null : n;
@@ -1802,8 +1810,11 @@ const NAME_MAP = {
   'CREATININA':'Creatinina','UREIA':'Ureia','URÉIA':'Ureia','UREA':'Ureia',
   'SODIO':'Sódio','SÓDIO':'Sódio',
   'POTASSIO':'Potássio','POTÁSSIO':'Potássio',
-  'CALCIO IONICO':'Cálcio Iônico','CÁLCIO IÔNICO':'Cálcio Iônico',
-  'CALCIO IONICO ARTERIAL':'Cálcio Iônico','CÁLCIO IÔNICO ARTERIAL':'Cálcio Iônico',
+  'CALCIO IONICO':'Cálcio iônico','CÁLCIO IÔNICO':'Cálcio iônico',
+  'CALCIO IONICO ARTERIAL':'Cálcio iônico','CÁLCIO IÔNICO ARTERIAL':'Cálcio iônico',
+  // Phase 6g (Núcleo): Cálcio iônico venoso é exame DISTINTO do arterial
+  'CALCIO IONICO VENOSO':'Cálcio iônico Venoso','CÁLCIO IÔNICO VENOSO':'Cálcio iônico Venoso',
+  'CAI VENOSO':'Cálcio iônico Venoso',
   'MAGNESIO':'Magnésio','MAGNÉSIO':'Magnésio',
   'FOSFORO':'Fósforo','FÓSFORO':'Fósforo',
   'BILIRRUBINA TOTAL':'Bilirrubina Total','BILIRRUBINA DIRETA':'Bilirrubina Direta',
@@ -1832,13 +1843,23 @@ const NAME_MAP = {
   // Abreviações de gasometria (Biocentro/IMEC e Citomed/HOC)
   'NA':'Sódio','NA+':'Sódio',
   'K':'Potássio','K+':'Potássio',
-  'CA++':'Cálcio Iônico','CA+':'Cálcio Iônico','CAI':'Cálcio Iônico',
+  'CA++':'Cálcio iônico','CA+':'Cálcio iônico','CAI':'Cálcio iônico',
   'LAC':'Lactato',
   'LACTATO':'Lactato','LACTATO ARTERIAL':'Lactato',
+  // Phase 6g (Núcleo): Lactato venoso é exame DISTINTO do arterial
+  'LACTATO VENOSO':'Lactato Venoso','LAC VENOSO':'Lactato Venoso',
   'GLICOSE':'Glicose','GLICEMIA':'Glicose','GLUCOSE':'Glicose','GLI':'Glicose',
   'HEMOGLOBINA GLICADA':'HbA1c','GLICOHEMOGLOBINA':'HbA1c','HBA1C':'HbA1c',
   'A1C':'HbA1c','HEMOGLOBINA A1C':'HbA1c','HB GLICADA':'HbA1c',
   'TROPONINA':'Troponina','CPK':'CPK','CK':'CPK','CREATINOFOSFOQUINASE':'CPK',
+  'CK TOTAL':'CPK','CK-TOTAL':'CPK','CREATINA QUINASE':'CPK','CREATINOQUINASE':'CPK',
+  // Phase 6g (Núcleo): CK-MB — variantes CPKMB, CK-MB, CKMB
+  'CKMB':'CK-MB','CK-MB':'CK-MB','CKMB MASSA':'CK-MB','CK MB':'CK-MB',
+  'CPKMB':'CK-MB','CPK-MB':'CK-MB','CPK MB':'CK-MB','CK-MB MASSA':'CK-MB',
+  // Phase 6g (Núcleo): NT-proBNP canônico — variantes com/sem ponto, caps mista
+  'NT-PROBNP':'NT-proBNP','NT PROBNP':'NT-proBNP','NTPROBNP':'NT-proBNP',
+  'NT-PRO BNP':'NT-proBNP','NT PRO BNP':'NT-proBNP',
+  'NT-PROBNP.':'NT-proBNP','NT-PRO-BNP':'NT-proBNP',
   'BNP':'BNP','PROCALCITONINA':'Procalcitonina',
   'FIBRINOGENIO':'Fibrinogênio','FIBRINOGÊNIO':'Fibrinogênio',
   'DIMERO D':'Dímero-D','DÍMERO D':'Dímero-D','D-DIMERO':'Dímero-D',
@@ -1857,7 +1878,7 @@ const NAME_MAP = {
   'DOSAGEM DE SÓDIO':'Sódio','DOSAGEM DE SODIO':'Sódio',
   'DOSAGEM DE POTÁSSIO':'Potássio','DOSAGEM DE POTASSIO':'Potássio',
   'DOSAGEM DE MAGNÉSIO':'Magnésio','DOSAGEM DE MAGNESIO':'Magnésio',
-  'DOSAGEM DE CÁLCIO IÔNICO':'Cálcio Iônico','DOSAGEM DE CALCIO IONICO':'Cálcio Iônico',
+  'DOSAGEM DE CÁLCIO IÔNICO':'Cálcio iônico','DOSAGEM DE CALCIO IONICO':'Cálcio iônico',
   'DOSAGEM DE FOSFATASE ALCALINA':'Fosfatase Alcalina',
   'DOSAGEM DE TGO (AST)':'TGO (AST)','DOSAGEM DE TGP (ALT)':'TGP (ALT)',
   'DOSAGEM DE TGO':'TGO (AST)','DOSAGEM DE TGP':'TGP (ALT)',
@@ -1877,12 +1898,37 @@ const NAME_MAP = {
   'TRANSAMINASE PIRUVICA (TGP)':'TGP (ALT)',
   'GAMA GLUTAMIL TRANSFERASE (GAMA GT)':'GGT','GAMMA-GLUTAMIL TRANSFERASE (Y-GT)':'GGT',
   'GAMA-GLUTAMILTRANSFERASE':'GGT','GAMA GT':'GGT','GAMA-GT':'GGT',
+  // Phase 6h: Núcleo variantes com vírgula no nome do exame
+  'GAMA-GT, GAMA-GLUTAMIL TRANSFERASE':'GGT',
+  'GAMA GT, GAMA GLUTAMIL TRANSFERASE':'GGT',
+  'GAMA-GT,GAMA-GLUTAMIL TRANSFERASE':'GGT',
+  'TRANSAMINASE GLUTAMICO PIRUVICA,TGP, ALT':'TGP (ALT)',
+  'TRANSAMINASE GLUTAMICO PIRUVICA, TGP, ALT':'TGP (ALT)',
+  'TRANSAMINASE GLUTAMICO PIRUVICA,TGP,ALT':'TGP (ALT)',
+  'TRANSAMINASE GLUTÂMICO PIRÚVICA,TGP, ALT':'TGP (ALT)',
+  'TRANSAMINASE GLUTAMICO OXALACETICA,TGO,AST':'TGO (AST)',
+  'TRANSAMINASE GLUTAMICO OXALACETICA, TGO, AST':'TGO (AST)',
+  'TRANSAMINASE GLUTAMICO OXALACETICA,TGO, AST':'TGO (AST)',
+  'TRANSAMINASE GLUTÂMICO OXALACÉTICA,TGO,AST':'TGO (AST)',
+  'BILIRRUBINAS TOTAIS E FRACOES':'Bilirrubina Total',
+  'BILIRRUBINAS TOTAIS E FRAÇÕES':'Bilirrubina Total',
+  // Coagulação Núcleo
+  'TAP - TEMPO DE PROTROMBINA':'TP - Atividade',
+  'TTPA - TEMPO DE TROMBOPLASTINA PARCIAL ATIVADO':'TTPA',
+  'COAGULOGRAMA COMPLETO':'Coagulograma',
+  'RNI':'INR','R.N.I':'INR','R.N.I.':'INR',
+  'RELAÇÃO P/N':'Relação P/N','RELACAO P/N':'Relação P/N','RELACÃO P/N':'Relação P/N',
+  'ATIVIDADE':'TP - Atividade',
+  'TEMPO DE SANGRAMENTO':'Tempo de Sangramento','TS':'Tempo de Sangramento',
+  'TEMPO DE COAGULACAO':'Tempo de Coagulação','TEMPO DE COAGULAÇÃO':'Tempo de Coagulação',
+  'TC':'Tempo de Coagulação',
+  'CONTAGEM DE PLAQUETAS':'Plaquetas',
   // Qualificadores séricos
   'SÓDIO SÉRICO':'Sódio','SODIO SERICO':'Sódio',
   'POTÁSSIO SÉRICO':'Potássio','POTASSIO SERICO':'Potássio',
   'MAGNÉSIO SÉRICO':'Magnésio','MAGNESIO SERICO':'Magnésio',
   // Variantes de cálcio
-  'CÁLCIO IÔNICO VENOSO':'Cálcio Iônico','CALCIO IONICO VENOSO':'Cálcio Iônico',
+  'CÁLCIO IÔNICO VENOSO':'Cálcio iônico Venoso','CALCIO IONICO VENOSO':'Cálcio iônico Venoso',
   'CÁLCIO':'Cálcio Total','CALCIO':'Cálcio Total',
   // Bilirrubina
   'BILIRRUBINA TOTAL E FRAÇÕES':'Bilirrubina Total',
@@ -1900,8 +1946,34 @@ const NAME_MAP = {
   'TROPONINA I ULTRASSENSIVEL':'Troponina','TROPONINA I ULTRASSENSÍVEL':'Troponina',
   'TROPONINA T ULTRASSENSIVEL':'Troponina','TROPONINA T ULTRASSENSÍVEL':'Troponina',
   'TROPONINA DE ALTA SENSIBILIDADE':'Troponina','TROPONINA HS':'Troponina',
+  // Phase 6g+: Troponina teste rápido (Núcleo) — separar do quantitativo
+  'TROPONINA TESTE RAPIDO':'Troponina (TR)','TROPONINA TESTE RÁPIDO':'Troponina (TR)',
+  'TROPONINA T TESTE RAPIDO':'Troponina (TR)','TROPONINA T TESTE RÁPIDO':'Troponina (TR)',
+  'TROPONINA I TESTE RAPIDO':'Troponina (TR)','TROPONINA I TESTE RÁPIDO':'Troponina (TR)',
+  'TROPONINA QUALITATIVA':'Troponina (TR)',
+  // Phase 6g+: D-Dímero quantitativo (Núcleo)
+  'D-DIMERO QUANTITATIVO':'Dímero-D','D-DÍMERO QUANTITATIVO':'Dímero-D',
+  'DIMERO D QUANTITATIVO':'Dímero-D','DÍMERO-D QUANTITATIVO':'Dímero-D',
   // Lactato
-  'LACTATO VENOSO':'Lactato',
+  'LACTATO VENOSO':'Lactato Venoso',
+  // Phase 6g: Sorologias arboviroses + sífilis (Núcleo)
+  'DENGUE, ANTICORPOS IGM':'Sorologia Dengue IgM',
+  'DENGUE, ANTICORPOS IGG':'Sorologia Dengue IgG',
+  'DENGUE ANTICORPOS IGM':'Sorologia Dengue IgM',
+  'DENGUE ANTICORPOS IGG':'Sorologia Dengue IgG',
+  'DENGUE IGM':'Sorologia Dengue IgM','DENGUE IGG':'Sorologia Dengue IgG',
+  'SOROLOGIA DENGUE IGM':'Sorologia Dengue IgM',
+  'SOROLOGIA DENGUE IGG':'Sorologia Dengue IgG',
+  'DENGUE NS1':'Dengue NS1','DENGUE NS1-AG':'Dengue NS1',
+  'DENGUE NS1 AG':'Dengue NS1','NS1 DENGUE':'Dengue NS1',
+  'ANTÍGENO NS1 DENGUE':'Dengue NS1','ANTIGENO NS1 DENGUE':'Dengue NS1',
+  'CHIKUNGUNYA IGM':'Sorologia Chikungunya IgM',
+  'CHIKUNGUNYA IGG':'Sorologia Chikungunya IgG',
+  'CHIKUNGUNYA, ANTICORPOS IGM':'Sorologia Chikungunya IgM',
+  'CHIKUNGUNYA, ANTICORPOS IGG':'Sorologia Chikungunya IgG',
+  'SOROLOGIA CHIKUNGUNYA IGM':'Sorologia Chikungunya IgM',
+  'SOROLOGIA CHIKUNGUNYA IGG':'Sorologia Chikungunya IgG',
+  'VDRL':'VDRL','V.D.R.L.':'VDRL','VDRL QUALITATIVO':'VDRL',
   // Urina
   'DENSIDADE':'Densidade','PH URINARIO':'pH Urinário','PH URINÁRIO':'pH Urinário',
   'PROTEINA TOTAL URINA':'Proteína Urinária','PROTEÍNA TOTAL URINA':'Proteína Urinária',
@@ -2088,14 +2160,17 @@ const PARAM_WHITELIST = new Set([
 
 // Normaliza nome de exame para o canônico. Retorna null se desconhecido.
 function normName(raw) {
-  const u = raw.trim().toUpperCase().replace(/\s+/g,' ');
+  // Phase 6g: strip trailing periods ("NT-proBNP." → "NT-PROBNP") e colons
+  const u = raw.trim().toUpperCase().replace(/[.:]+$/,'').replace(/\s+/g,' ');
   return NAME_MAP[u] || null;
 }
 
 // Versão com fallback em title-case para exibição quando o nome é inserido manualmente
 function normNameDisplay(raw) {
-  return normName(raw) ||
-    raw.trim().replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
+  // Phase 6g: strip trailing periods/colons no fallback também
+  const stripped = raw.trim().replace(/[.:]+$/,'');
+  return normName(stripped) ||
+    stripped.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
 }
 
 // Phase 2b: skipLine aceita um regex extra (padrões específicos do lab atual).
@@ -2115,6 +2190,10 @@ function skipLine(line, extraRegex) {
   if (/^\d+\s+(a|\-|–|até)\s+\d+\s+(dia|mes|mês|ano)/i.test(t)) return true;
   if (/^\d+\s+(Dia|Mes|M[eê]s|Ano)s?\s+a\s+/i.test(t)) return true;
   if (/^[>≥<≤]\s*\d+\s+(Ano|Mes|M[eê]s|Dia)/i.test(t)) return true;
+  // Phase 6g: Núcleo — linhas da tabela de ref de Lactato/gasometria que
+  // começam com "venoso"/"Arterial"/"Plasma"/"Soro" seguidas de faixa numérica.
+  // Ex: "venoso   0.5 a 2.2 mmol/L", "Arterial   0.5 a 1.6 mmol/L"
+  if (/^(Venoso|Arterial|Plasma|Soro)\s+[0-9][0-9.,]*\s*(a|[-–])\s*[0-9]/i.test(t)) return true;
   const extra = extraRegex || _currentLabSkipExtra;
   if (extra && extra.test(t)) return true;
   return false;
@@ -2134,6 +2213,57 @@ let _currentLabMultiExtra = null;
 // hemograma. Substitui o antigo `if (format === 'CITOMED' || format === 'GENERIC')`
 // do parser, encerrando o papel do detectFormat() (removido na Phase 5).
 let _currentLabSingleLineEnabled = true;
+
+// Phase 6g: contexto de gasometria. Seta 'Arterial' ou 'Venosa' quando
+// examPrefixMatch detecta GASOMETRIA ARTERIAL/VENOSA. Usado pra sufixar
+// pH/PCO2/PO2/HCO3/BE/O2 CT/Hct/O2 Sat/sodio/potassio/glicose com
+// (Arterial)/(Venosa) e evitar colisão entre os dois exames.
+let _currentGasoContext = null;
+
+// Phase 6g: params de gasometria que ganham sufixo (Arterial)/(Venosa).
+// Inclui variantes de nome (pt vs alias) e cobre o formato Núcleo (HC03
+// com zero em vez de O por typo do LIS, minúsculas como "sodio").
+const GASO_PARAMS = {
+  'PH':'pH','HC03':'HCO3','HCO3':'HCO3',
+  'PCO2':'PCO2','PO2':'PO2','BE':'BE',
+  '02 CT':'O2 CT','O2 CT':'O2 CT',
+  '02 SAT':'O2 Sat','O2 SAT':'O2 Sat','SATO2':'O2 Sat',
+  'HCT':'Hct','HEMATÓCRITO':'Hct','HEMATOCRITO':'Hct',
+  'SODIO':'Sódio','SÓDIO':'Sódio','NA':'Sódio',
+  'POTASSIO':'Potássio','POTÁSSIO':'Potássio','K':'Potássio',
+  'GLICOSE':'Glicose',
+  'TIPO DE COLETA':null, // skip — não é param
+  // Phase 6g: Hemoglobina dentro da gaso é redundante com hemograma — skip
+  'HB':null,'HEMOGLOBINA':null,
+};
+
+// Phase 6g: params dentro da gaso que recebem nome ESPECIAL (não o sufixo padrão).
+// Ex: "calcio ionico" dentro de GASOMETRIA VENOSA é o mesmo exame standalone
+// "Cálcio iônico Venoso" (sem parênteses), conforme convenção da Juliana.
+const GASO_SPECIAL_NAMES = {
+  'Venosa': {
+    'CALCIO IONICO':'Cálcio iônico Venoso',
+    'CÁLCIO IÔNICO':'Cálcio iônico Venoso',
+    'CAI':'Cálcio iônico Venoso',
+  },
+  'Arterial': {
+    'CALCIO IONICO':'Cálcio iônico',
+    'CÁLCIO IÔNICO':'Cálcio iônico',
+    'CAI':'Cálcio iônico',
+  },
+};
+
+function _gasoRename(name, ctx) {
+  if (!ctx) return name;
+  const key = name.toUpperCase().replace(/\s+/g,' ').trim();
+  // Special-case override (Cálcio iônico Venoso etc)
+  const special = GASO_SPECIAL_NAMES[ctx] && GASO_SPECIAL_NAMES[ctx][key];
+  if (special) return special;
+  const canon = GASO_PARAMS[key];
+  if (canon === null) return null; // skip (Hb redundante, Tipo de Coleta)
+  if (canon) return `${canon} (${ctx})`;
+  return name;
+}
 
 const MULTI_SECTIONS = [
   'HEMOGRAMA','ERITROGRAMA','LEUCOGRAMA','PLAQUETOGRAMA','SÉRIE ERITROCITÁRIA','SÉRIE LEUCOCITÁRIA','SÉRIE PLAQUETÁRIA',
@@ -2160,6 +2290,9 @@ const MULTI_SECTIONS = [
   // Coagulação (TAP/INR em formato multi-param — Pio X)
   'TEMPO DE PROTOMBINA','TEMPO DE PROTROMBINA',
   'TEMPO DE ATIVIDADE DA PROTROMBINA',
+  // Phase 6h: Núcleo coagulação multi-param
+  'TAP - TEMPO DE PROTROMBINA',
+  'COAGULOGRAMA COMPLETO','COAGULOGRAMA',
 ];
 
 function isMultiHeader(line) {
@@ -2186,6 +2319,22 @@ function parseParamRow(line) {
   if (skipLine(t)) return null;
   if (t.length < 3) return null;
 
+  // ─── Phase 6g: Núcleo gasometria trailing indicator-bar junk ──────────────
+  // Linhas como "pH....................: 7,33    ______________" ou
+  // "BE....................: -4,0    ______________" têm a barra ASCII de
+  // indicador grudada no final. Strip trailing [_\s|*]+ antes de parse.
+  t = t.replace(/[\s_|*]+$/,'').trim();
+  if (t.length < 3) return null;
+  // Skip lines que são APENAS indicador bar (ex: "______________" ou "|*  |")
+  if (/^[\s_|*]+$/.test(t)) return null;
+
+  // ─── Phase 6g: Núcleo "02 CT"/"02 SAT" — typo LIS (0 em vez de O) ─────────
+  // Normaliza "02 CT"/"02 SAT" → "O2 CT"/"O2 SAT" para o re2 pattern aceitar
+  // (name regex exige começar com letra, não dígito).
+  t = t.replace(/^0(2\s+(?:CT|SAT)\b)/i, 'O$1');
+  // Mesmo fix para "HC03" (zero em vez de O)
+  t = t.replace(/^HC03\b/, 'HCO3');
+
   // ─── Pré-processamento: strip "ref tail" (Pio X / colunas lado-a-lado) ──
   // Laudos colocam resultado e referência na mesma linha, separados por espaços:
   // pdftotext: "TAP...: 18,0 SEG                TAP...: 10.0 a 15.0 SEG" (6+ espaços)
@@ -2209,6 +2358,9 @@ function parseParamRow(line) {
   //   "Células Nucleadas: 0,00 /mm³  ADULTOS: ATÉ 5 CÉLULAS..." → "... até 5"
   t = t.replace(/\bDE\s+([0-9][0-9.,]*)\s+A\s+([0-9][0-9.,]*)/i, '$1 a $2');
   t = t.replace(/\bADULTOS?\s*:\s*AT[ÉE]\s+([0-9][0-9.,]*)(?:\s+[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç].*)?$/i, '< $1');
+  // Phase 6h: Núcleo bilirrubinas — "ate 1,0" / "até 0,4" → "< 1,0"
+  // Só normaliza se vier APÓS um espaço duplo (ref column), pra não pegar "até" no meio do nome.
+  t = t.replace(/\s{2,}at[ée]\s+([0-9][0-9.,]*)/i, '   < $1');
 
   // ─── Pré-processamento: normaliza abreviações com pontos (HOC/Citomed) ───
   // "V.C.M. : 90,1 fL" → "VCM : 90,1 fL"
@@ -2422,6 +2574,8 @@ function parsePDFText(text) {
   // And also multi-param sections
 
   let inMulti = false;
+  let inMultiRefSkip = false;  // Phase 6h: skip ref tables dentro de multi (Núcleo bilirrubinas)
+  const refSkipLineIdx = new Set();  // Phase 6h: indices marcados como ref-skip (p/ second-pass)
   let inLiquor = false;  // Rastreia contexto de líquor para sufixo "(LCR)"
   let currentExamName = '';
   let lookingForRef = false;
@@ -2560,13 +2714,31 @@ function parsePDFText(text) {
     // Exclui "Exame Físico", "Exame Microscópico" etc. que são sub-seções de EAS.
     const examPrefixMatch = line.match(/^Exame\s*:\s*(.+?)\s*(?:Id\s+Exame.*)?$/i);
     if (examPrefixMatch) {
-      const candidate = examPrefixMatch[1].trim().replace(/\s{2,}.*$/, '');
+      const candidate = examPrefixMatch[1].trim().replace(/\s{2,}.*$/, '').replace(/\.+$/,'');
+      // Phase 6g: se o candidato FOR uma multi-section (ex: GASOMETRIA
+      // ARTERIAL, GASOMETRIA VENOSA), ativa inMulti com contexto. Antes,
+      // o isMultiHeader(line) da linha bruta falhava por causa do "Id
+      // Exame: 273" (guard \:\s*\d).
+      if (candidate && isMultiHeader(candidate)) {
+        inMulti = true;
+        inMultiRefSkip = false;
+        currentExamName = '';
+        pendingResult = null;
+        const cUp = candidate.toUpperCase();
+        if (/^GASOMETRIA\s+ARTERIAL/.test(cUp)) _currentGasoContext = 'Arterial';
+        else if (/^GASOMETRIA\s+VENOSA/.test(cUp)) _currentGasoContext = 'Venosa';
+        else _currentGasoContext = null;
+        if (/L[ÍI]QUOR/.test(cUp)) inLiquor = true; else inLiquor = false;
+        continue;
+      }
       if (candidate && candidate.length >= 2 && candidate.length < 60 &&
           !/^(f[ií]sico|microsc[óo]pico|qu[ií]mico|bioqu[ií]mico)/i.test(candidate) &&
           !isMultiHeader(candidate) &&
           !isEASHeader(candidate)) {
         inMulti = false;
+        inMultiRefSkip = false;
         inLiquor = false;
+        _currentGasoContext = null;
         currentExamName = candidate;
         pendingResult = null;
         // Phase 6c: skip qualquer pseudo-header tipo "BIOQUIMICA INTERNA" que
@@ -2599,15 +2771,41 @@ function parsePDFText(text) {
 
     if (isExamHeader) {
       inMulti = false;  // Exit multi-param mode when a new single exam header is detected
+      inMultiRefSkip = false;
       inLiquor = false; // Exit liquor context
+      _currentGasoContext = null;
       currentExamName = line.trim();
       pendingResult = null;
       continue;
     }
 
+    // Phase 6g+: Núcleo bug — D-Dímero usa "Referencia.........:" como rótulo do
+    // resultado. Linha tem formato "Referencia.....: 541,0 ng/mL    < 500,0 ng/mL"
+    // (valor + unidade + ref inline). Aceita só quando currentExamName parece ser
+    // D-Dímero E há ref inline na mesma linha (caso contrário pode ser cabeçalho).
+    if (!inMulti && currentExamName && /d[íi]mero|dimero/i.test(currentExamName)) {
+      const nucleoBugMatch = line.match(/refer[eê]ncia[\s.:>]*:\s*([0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^·0-9]+)\s+((?:<|>|at[ée]|inferior\s+a|menor)\s*[0-9][0-9.,]*[^\n]*|[0-9][0-9.,]*\s*[-–aA]\s*[0-9][0-9.,]*[^\n]*)/i);
+      if (nucleoBugMatch) {
+        const val = pNum(nucleoBugMatch[1]);
+        const unit = (nucleoBugMatch[2]||'').trim();
+        const refRaw = nucleoBugMatch[3].trim();
+        if (val !== null) {
+          const {refMin,refMax} = parseRef(refRaw);
+          const name = normNameDisplay(currentExamName);
+          if (!SKIP_NAMES.has(name.toUpperCase())) {
+            results.push({name,value:val,valueStr:nucleoBugMatch[1],unit,refMin,refMax,date,status:getStatus(val,refMin,refMax)});
+          }
+          pendingResult = null;
+          continue;
+        }
+      }
+    }
+
     // Match "Resultado: VALUE UNIT"
     // Phase 6c: aceita padding dots do Núcleo "Resultado.............: 6,7 mg/dL"
-    const resMatch = line.match(/[Rr]esultado[s]?[\s.:>]*:\s*([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^·0-9]+)?/);
+    // Phase 6h: aceita também "Plasma do Paciente (P):" como rótulo (TTPA Núcleo)
+    //           e parens na unit ("segundo(s)").
+    const resMatch = line.match(/(?:resultado[s]?|plasma\s+do\s+paciente\s*\(p\))[\s.:>]*:\s*([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^·0-9()]+)?/i);
     if (resMatch && !inMulti) {
       const val = pNum(resMatch[1]);
       const unit = (resMatch[2]||'').trim();
@@ -2628,19 +2826,34 @@ function parsePDFText(text) {
           // Stop scanning on next exam header or metadata
           if (/^(Obs|Nota:|Obs:|Data\s+Pedido|Paciente\s*:)/i.test(lj.trim())) break;
           // Check for explicit Referência header line
-          const refM = lj.match(/(?:[Vv]alor[es\s]+de\s+[Rr]ef[^:]*:?|VALOR\s+DE\s+REF[^:]*:?|[Rr]eferên[^:]*:?)\s*(.*)/);
+          const refM = lj.match(/(?:valor[es\s]+de\s+ref[^:]*:?|refer[eê]ncia[^:]*:?)\s*(.*)/i);
           if (refM) {
             passedRefHeader = true;
             const candidate = refM[1].trim();
             const {refMin:mn, refMax:mx} = parseRef(candidate);
             if (mn !== null || mx !== null) { ref = candidate; break; }
+            // Phase 6g: linha "REFERENCIA   0 A 25 U/L" (Núcleo CKMB) — header
+            // E range na mesma linha. parseRef pode falhar pelo lixo "REFERENCIA"
+            // antes; tenta direto a regex de range.
+            const rngHere = lj.match(/([0-9][0-9.,]*)\s+[aA]\s+([0-9][0-9.,]*)/) || lj.match(/([0-9][0-9.,]*)\s*[-–]\s*([0-9][0-9.,]*)/);
+            if (rngHere) { ref = `${rngHere[1]} a ${rngHere[2]}`; break; }
             continue; // ref header found but no range on same line, keep scanning
           }
           // After Referência header, look for first valid numeric range in subsequent lines
           // (handles "Adultos......: 15 - 39 mg/dL", "Homem......: 0,70 - 1,40 mg/dL", etc.)
           if (passedRefHeader) {
+            // Phase 6g: skip pediatric table headers e linhas onde o range
+            // numérico É um intervalo de idade pediátrica adjacente
+            // ("1-3 meses", "11-14 anos"). Aceita refs de adulto com
+            // qualificador "<75 anos" (idade ANTES do range numérico).
+            if (/^(crian[çc]as?|adolescent|idade|sexo|masc\.|fem\.)/i.test(lj.trim())) continue;
+            if (/\d[\d.,]*\s*[-–]\s*\d[\d.,]*\s*(meses|anos|dias)\b/i.test(lj)) continue;
             const rngM = lj.match(/([0-9][0-9.,]*)\s*[-–]\s*([0-9][0-9.,]*)/);
             if (rngM) { ref = `${rngM[1]} - ${rngM[2]}`; break; }
+            // Phase 6h: aceita unit-word entre o primeiro número e o "a"
+            // ("24,0 segundos a 35,0 segundos" no TTPA Núcleo)
+            const rngAw = lj.match(/([0-9][0-9.,]*)\s+[a-zA-Zµ%\/³]+\s+[aA]\s+([0-9][0-9.,]*)/);
+            if (rngAw) { ref = `${rngAw[1]} a ${rngAw[2]}`; break; }
             const rngA = lj.match(/([0-9][0-9.,]*)\s+[aA]\s+([0-9][0-9.,]*)/);
             if (rngA) { ref = `${rngA[1]} a ${rngA[2]}`; break; }
             const ltM = lj.match(/(?:at[ée]|inferior\s+a|menor(?:\s+que)?|<)\s*([0-9][0-9.,]*)/i);
@@ -2666,8 +2879,10 @@ function parsePDFText(text) {
     }
 
     // Match qualitative "Resultado: TEXT" (NÃO REAGENTE, REAGENTE, NEGATIVO, POSITIVO, etc.)
+    // Phase 6g: aceita padding dots do Núcleo ("Resultado..............:") e
+    // o typo "Resulado" (sem "t") que aparece no laudo Núcleo de VDRL.
     if (!inMulti && currentExamName) {
-      const qualResMatch = line.match(/[Rr]esultado[s]?\s*[.:>]?\s*:?\s*(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE)/i);
+      const qualResMatch = line.match(/[Rr]esul[t]?ado[s]?[\s.:>]*:\s*(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE)/i);
       if (qualResMatch) {
         const valStr = qualResMatch[1].trim();
         const name = normNameDisplay(currentExamName);
@@ -2711,13 +2926,30 @@ function parsePDFText(text) {
     // Multi-param row (hemograma, gasometria, líquor, etc.)
     if (inMulti) {
       if (skipLine(line)) continue;
-      // Check for end of section: blank or new section
-      if (/^[-=*]+$/.test(line)) { inMulti=false; inLiquor=false; continue; }
+      // Check for end of section: long separator (min 3 chars to evitar
+      // confusão com indicator markers `*` ou `|*|` da gasometria Núcleo).
+      if (/^[-=]{3,}$/.test(line)) { inMulti=false; inLiquor=false; continue; }
+      // Skip linhas que são apenas indicator-bar marker da gasometria Núcleo
+      if (/^[\s_|*]+$/.test(line)) continue;
+      // Phase 6h: Núcleo bilirrubinas tem uma tabela de "referencia" repetindo
+      // os params com ranges (sem valor de paciente). Detecta header standalone
+      // "referencia" / "referência" / "valores de referencia" e marca skip-mode
+      // até a próxima exam header / fim de multi.
+      if (/^\s*(?:valores\s+de\s+)?refer[eê]ncia\s*:?\s*$/i.test(line)) {
+        inMultiRefSkip = true; refSkipLineIdx.add(i); continue;
+      }
+      if (inMultiRefSkip) { refSkipLineIdx.add(i); continue; }
       const row = parseParamRow(line);
       if (row) {
         // Em contexto de líquor, renomeia parâmetros que conflitam com exames de sangue
         if (inLiquor) {
           row.name = _lcrName(row.name);
+        }
+        // Phase 6g: contexto de gasometria — sufixa (Arterial)/(Venosa)
+        if (_currentGasoContext) {
+          const newName = _gasoRename(row.name, _currentGasoContext);
+          if (newName === null) { continue; } // skip "Tipo de Coleta"
+          row.name = newName;
         }
         row.date = date;
         row.status = getStatus(row.value,row.refMin,row.refMax);
@@ -2739,8 +2971,11 @@ function parsePDFText(text) {
   for (let i=0;i<lines.length;i++) {
     const line = lines[i];
     if (skipLine(line)) continue;
+    // Phase 6h: pular linhas que estavam em modo "ref skip" do multi-section
+    // (ex: tabela "referencia" do bilirrubinas Núcleo).
+    if (refSkipLineIdx.has(i)) continue;
     const row = parseParamRow(line);
-    if (row && row.refMin!==null) { // only if has reference (more reliable)
+    if (row && row.refMin!==null) {
       row.date = date;
       row.status = getStatus(row.value,row.refMin,row.refMax);
       if (!SKIP_NAMES.has(row.name.toUpperCase())) {
@@ -3465,7 +3700,9 @@ async function adminCaptureFixture(ev) {
 }
 
 const SKIP_NAMES = new Set([
-  'RESULTADO','REFERÊNCIA','VALOR DE REFERÊNCIA','VALORES DE REFERÊNCIA','VALORES ABSOLUTOS',
+  'RESULTADO','RESULTADOS','REFERÊNCIA','REFERENCIA','VALOR DE REFERÊNCIA','VALORES DE REFERÊNCIA','VALORES ABSOLUTOS',
+  // Phase 6h: Relação P/N (TAP Núcleo) — redundante com INR clinicamente
+  'RELAÇÃO P/N','RELACAO P/N','RELACÃO P/N','PLASMA NORMAL (N)','PLASMA DO PACIENTE (P)',
   'MATERIAL','MÉTODO','MÉTODO','COLETADO','LIBERADO','HASH','IMPRESSO',
   'SÉRIE ERITROCITÁRIA','SÉRIE LEUCOCITÁRIA','SÉRIE PLAQUETÁRIA','ERITROGRAMA','LEUCOGRAMA',
   'PLAQUETOGRAMA','HEMOGRAMA COMPLETO','HEMOGRAMA COM PLAQUETAS','HEMOGRAMA AUTOMATIZADO',
@@ -3580,23 +3817,29 @@ function normEASName(raw) {
   return EAS_NAME_MAP[u] || null;
 }
 
-function buildEASResult(name, rawVal, date) {
+function buildEASResult(name, rawVal, date, refStr) {
   if (!rawVal) return null;
   const t = rawVal.trim();
   if (!t || t.length < 1) return null;
   const upper = t.toUpperCase().replace(/\s+/g,' ');
+  // Phase 6h: parse ref range from inline ref string (Núcleo layout)
+  let refMin = null, refMax = null;
+  if (refStr) {
+    const pr = parseRef(refStr);
+    refMin = pr.refMin; refMax = pr.refMax;
+  }
   // Phase 6c: semi-quantitativo "+", "++", "+++", "++/4" etc.
   // Status = low (1 cruz), high (2-3 cruzes), critico (4 cruzes)
   const plusM = upper.match(/^(\+{1,4})(?:\s*\/\s*[0-9]+)?$/);
   if (plusM) {
     const crosses = plusM[1].length;
     const st = crosses === 1 ? 'low' : (crosses >= 3 ? 'high' : 'low');
-    return {name, value:crosses, valueStr:t, unit:'', refMin:null, refMax:null, date, status:st, isQualitative:true, known:true};
+    return {name, value:crosses, valueStr:t, unit:'', refMin, refMax, date, status:st, isQualitative:true, known:true};
   }
   // Check qualitative map (exact then prefix)
   for (const [key, st] of Object.entries(EAS_QUAL_MAP)) {
     if (upper === key || upper.startsWith(key+' ') || upper.startsWith(key+'/')) {
-      return {name, value:0, valueStr:t, unit:'', refMin:null, refMax:null, date, status:st, isQualitative:true, known:true};
+      return {name, value:0, valueStr:t, unit:'', refMin, refMax, date, status:st, isQualitative:true, known:true};
     }
   }
   // Numeric (including < N patterns → store as qualitative display)
@@ -3605,35 +3848,54 @@ function buildEASResult(name, rawVal, date) {
     const val = pNum(numM[1].replace(/[<>≤≥\s]/g,''));
     const unit = (numM[2]||'').trim();
     if (val !== null) {
-      return {name, value:val, valueStr:numM[1].trim(), unit, refMin:null, refMax:null, date, status:'unknown', isQualitative:false, known:true};
+      const status = getStatus(val, refMin, refMax);
+      return {name, value:val, valueStr:numM[1].trim(), unit, refMin, refMax, date, status, isQualitative:false, known:true};
     }
   }
   // Any other text (colors, descriptors)
   if (/^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç\s\-\/]+$/.test(t) && t.length > 1) {
     const hasAbnormal = /TURVO|CONCENTRADO|HEMÁTICO|PURULENTO/i.test(t);
-    return {name, value:0, valueStr:t, unit:'', refMin:null, refMax:null, date,
+    return {name, value:0, valueStr:t, unit:'', refMin, refMax, date,
             status: hasAbnormal ? 'high' : 'normal', isQualitative:true, known:true};
   }
   return null;
 }
 
 function parseEASLine(line, date) {
-  const t = line.trim();
+  const t = line.trim().replace(/[\s_|*]+$/,'').trim();
   if (!t || t.length < 3) return null;
-  // Colon-separated: "Name: value [ref]" — take first chunk before 3+ spaces
+  // Colon-separated: "Name.....: value [unit]   [ref]   [indicator]"
   const mColon = t.match(/^([^:]{2,50}?)\s*:\s+(.+)$/);
   if (mColon) {
     const cn = normEASName(mColon[1]);
     if (cn) {
-      const rawVal = mColon[2].trim().split(/\s{3,}/)[0].trim();
-      return buildEASResult(cn, rawVal, date);
+      // Phase 6h: split em colunas por 3+ espaços.
+      // Núcleo layout: col[0]=valor+unit, col[1]=ref, col[2]=indicator bar.
+      // Caso especial: se "valor   unit" está separado por 3+ espaços do unit,
+      // tenta re-juntar (ex: "4.500   /mL").
+      const cols = mColon[2].trim().split(/\s{3,}/);
+      let rawVal = cols[0].trim();
+      let refStr = null;
+      // Se col[1] parece ser uma unit (/mL, /mm³ etc.), junta com col[0]
+      if (cols.length > 1 && /^[\/µu][a-zA-Z]/.test(cols[1].trim())) {
+        rawVal = rawVal + ' ' + cols[1].trim();
+        if (cols.length > 2) refStr = cols[2].trim();
+      } else if (cols.length > 1) {
+        refStr = cols[1].trim();
+      }
+      // Limpa ref: ignora se parece indicator bar apenas
+      if (refStr && /^[_|*\s]+$/.test(refStr)) refStr = null;
+      return buildEASResult(cn, rawVal, date, refStr || null);
     }
   }
   // Space-tabular: "PARAM   value   [ref]"
   const mSpace = t.match(/^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\/]+?)\s{3,}(.+?)(?:\s{2,}(.+))?$/);
   if (mSpace) {
     const cn = normEASName(mSpace[1]);
-    if (cn) return buildEASResult(cn, mSpace[2].trim(), date);
+    if (cn) {
+      const refStr2 = mSpace[3] ? mSpace[3].trim() : null;
+      return buildEASResult(cn, mSpace[2].trim(), date, refStr2);
+    }
   }
   return null;
 }
@@ -3641,7 +3903,7 @@ function parseEASLine(line, date) {
 function flushEASPairs(params, values, date, results) {
   const n = Math.min(params.length, values.length);
   for (let i = 0; i < n; i++) {
-    const r = buildEASResult(params[i], values[i], date);
+    const r = buildEASResult(params[i], values[i], date, null);
     if (r) results.push(r);
   }
 }
