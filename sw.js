@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v44 (Phase 6i: PDF.js gasometria fix — split-line reconstruction, skipLine guard, examPrefixMatch space normalization)
-const CACHE = 'clinboard-v44';
+// clinBoard Service Worker — v45 (Phase 7: same-day multi-collection — datetime columns with HH:MM)
+const CACHE = 'clinboard-v45';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

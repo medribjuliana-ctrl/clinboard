@@ -430,7 +430,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
           </div>
         </div>
         <div style="margin-top:8px;padding:8px 12px;background:var(--g50);border-radius:8px;font-size:12px;color:var(--g500)">
-          Data de coleta: <input type="date" id="ext-date-edit" style="border:1px solid var(--g200);border-radius:5px;padding:2px 6px;font-size:12px;margin-left:6px">
+          Data/hora coleta: <input type="datetime-local" id="ext-date-edit" style="border:1px solid var(--g200);border-radius:5px;padding:2px 6px;font-size:12px;margin-left:6px">
         </div>
       </div>
       <!-- Step 3b: imaging form -->
@@ -1217,12 +1217,8 @@ function renderLabPanel() {
   params.forEach(param => {
     exams[param].forEach(r => dateSet.add(r.date));
   });
-  // Sort dates chronologically (DD/MM/YYYY → sort as YYYY/MM/DD)
-  const dates = [...dateSet].sort((a,b) => {
-    const pa = a.split('/').reverse().join('');
-    const pb = b.split('/').reverse().join('');
-    return pa.localeCompare(pb);
-  });
+  // Sort dates chronologically (suporta "DD/MM/YYYY" e "DD/MM/YYYY HH:MM")
+  const dates = [...dateSet].sort((a,b) => dateSortKey(a).localeCompare(dateSortKey(b)));
 
   // Assign params to groups (usa EXAM_GROUPS global)
   const assigned = new Set();
@@ -1246,7 +1242,7 @@ function renderLabPanel() {
 
   // Build table
   let html = `<div class="exam-wrap"><table class="exam-table">
-    <thead><tr><th>Parâmetro</th>${dates.map(d=>`<th><div class="th-date-wrap">${d}<button class="del-date-btn" onclick="deleteLabDate('${d}')" title="Excluir coleta de ${d}">🗑️</button></div></th>`).join('')}</tr></thead>
+    <thead><tr><th>Parâmetro</th>${dates.map(d=>`<th><div class="th-date-wrap">${dateDisplayHeader(d)}<button class="del-date-btn" onclick="deleteLabDate('${d}')" title="Excluir coleta de ${d}">🗑️</button></div></th>`).join('')}</tr></thead>
     <tbody>`;
 
   Object.entries(groupAssign).forEach(([group, pList]) => {
@@ -1291,12 +1287,10 @@ function downloadLabPDF() {
   const params = Object.keys(exams);
   if (params.length === 0) { toast('Nenhum exame para exportar','err'); return; }
 
-  // Collect and sort dates
+  // Collect and sort dates (suporta "DD/MM/YYYY" e "DD/MM/YYYY HH:MM")
   const dateSet = new Set();
   params.forEach(param => exams[param].forEach(r => dateSet.add(r.date)));
-  const dates = [...dateSet].sort((a,b) => {
-    return a.split('/').reverse().join('').localeCompare(b.split('/').reverse().join(''));
-  });
+  const dates = [...dateSet].sort((a,b) => dateSortKey(a).localeCompare(dateSortKey(b)));
 
   // Assign params to groups (usa EXAM_GROUPS global — fonte única de verdade)
   const assigned = new Set();
@@ -1412,11 +1406,7 @@ function downloadLabPDF() {
 function renderImgPanel() {
   const p = getPatient(state.unitId, state.patientId);
   if (!p) return;
-  const imgs = (p.imagingExams||[]).sort((a,b)=>{
-    const pa = a.date.split('/').reverse().join('');
-    const pb = b.date.split('/').reverse().join('');
-    return pa.localeCompare(pb);
-  });
+  const imgs = (p.imagingExams||[]).sort((a,b)=> dateSortKey(a.date).localeCompare(dateSortKey(b.date)));
   document.getElementById('img-info').textContent =
     imgs.length > 0 ? `${imgs.length} exame${imgs.length!==1?'s':''} registrado${imgs.length!==1?'s':''}` : '';
   const container = document.getElementById('img-content');
@@ -1756,25 +1746,26 @@ function getStatus(v,mn,mx) {
 function findDate(text) {
   let m;
   // ── Padrões explícitos de coleta (alta confiança) ──────────────────
-  m = text.match(/[Cc]oletado?\s*\(?\s*(\d{2}\/\d{2}\/\d{4})/);
-  if (m) return m[1];
-  m = text.match(/\[\s*[Cc]oleta\s*:\s*(\d{2}\/\d{2}\/\d{4})/);
-  if (m) return m[1];
-  m = text.match(/[Cc]oleta[.…]*\s*:\s*(\d{2}\/\d{2}\/\d{4})/);
-  if (m) return m[1];
-  m = text.match(/[Dd]ata\s+de\s+[Cc]oleta\s*:\s*(\d{2}\/\d{2}\/\d{4})/);
-  if (m) return m[1];
-  m = text.match(/[Mm]aterial\s+coletado[^:]*:\s*(\d{2}\/\d{2}\/\d{4})/);
-  if (m) return m[1];
+  // Cada padrão agora captura horário opcional (HH:MM) após a data
+  m = text.match(/[Cc]oletado?\s*\(?\s*(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/);
+  if (m) return m[1] + (m[2] ? ' ' + m[2] : '');
+  m = text.match(/\[\s*[Cc]oleta\s*:\s*(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/);
+  if (m) return m[1] + (m[2] ? ' ' + m[2] : '');
+  m = text.match(/[Cc]oleta[.…]*\s*:\s*(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/);
+  if (m) return m[1] + (m[2] ? ' ' + m[2] : '');
+  m = text.match(/[Dd]ata\s+de\s+[Cc]oleta\s*:\s*(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/);
+  if (m) return m[1] + (m[2] ? ' ' + m[2] : '');
+  m = text.match(/[Mm]aterial\s+coletado[^:]*:\s*(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/);
+  if (m) return m[1] + (m[2] ? ' ' + m[2] : '');
 
-  // ── Busca por proximidade: data mais próxima de "coleta"/"material" ──
+  // ── Busca por proximidade: data (+hora) mais próxima de "coleta"/"material" ──
   const coletaIdx = text.search(/[Cc]oleta|[Mm]aterial/);
   if (coletaIdx >= 0) {
-    const dateRe = /(\d{2}\/\d{2}\/\d{4})/g;
+    const dateRe = /(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/g;
     let best = null, bestDist = Infinity;
     while ((m = dateRe.exec(text)) !== null) {
       const dist = Math.abs(m.index - coletaIdx);
-      if (dist < bestDist) { bestDist = dist; best = m[1]; }
+      if (dist < bestDist) { bestDist = dist; best = m[1] + (m[2] ? ' ' + m[2] : ''); }
     }
     if (best && bestDist < 200) return best;
   }
@@ -1782,8 +1773,8 @@ function findDate(text) {
   // ── Fallback: primeira data genérica (baixa confiança) ─────────────
   // NOTA: pode ser data de nascimento, impressão ou liberação.
   // O chamador deve sinalizar ao usuário para verificar.
-  m = text.match(/(\d{2}\/\d{2}\/\d{4})/);
-  if (m) return m[1];
+  m = text.match(/(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/);
+  if (m) return m[1] + (m[2] ? ' ' + m[2] : '');
   return null;
 }
 
@@ -4088,7 +4079,7 @@ function showManualMode() {
   document.getElementById('ext-list').innerHTML = '';
   document.getElementById('ext-date').textContent = '';
   document.getElementById('ext-lab').textContent = 'Manual';
-  document.getElementById('ext-date-edit').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ext-date-edit').value = new Date().toISOString().slice(0,16);
   showUploadStep(3);
   document.getElementById('btn-save-lab').style.display = '';
 }
@@ -4190,9 +4181,10 @@ const LAB_LABELS = {
 function renderExtracted(labId, date) {
   document.getElementById('ext-date').textContent = date;
   document.getElementById('ext-lab').textContent = LAB_LABELS[labId]||labId;
-  // Preset date edit
+  // Preset date/time edit — datetime-local needs "YYYY-MM-DDTHH:MM"
   const iso = dateToISO(date);
-  document.getElementById('ext-date-edit').value = iso||new Date().toISOString().slice(0,10);
+  const fallbackNow = new Date().toISOString().slice(0,16); // YYYY-MM-DDTHH:MM
+  document.getElementById('ext-date-edit').value = iso || fallbackNow;
 
   const list = document.getElementById('ext-list');
   const unknownCount = extractedResults.filter(r=>r.known===false).length;
@@ -4267,15 +4259,34 @@ function addManual() {
   document.getElementById('btn-save-lab').style.display='';
 }
 
+// Converte "DD/MM/YYYY" ou "DD/MM/YYYY HH:MM" → ISO para input datetime-local
 function dateToISO(dmy) {
   if (!dmy) return '';
-  const m = dmy.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+  const m = dmy.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}:\d{2}))?/);
+  if (!m) return '';
+  const datePart = `${m[3]}-${m[2]}-${m[1]}`;
+  return m[4] ? `${datePart}T${m[4]}` : datePart;
 }
+// Converte ISO (date ou datetime-local) → display "DD/MM/YYYY" ou "DD/MM/YYYY HH:MM"
 function isoToDisplay(iso) {
   if (!iso) return '';
-  const m = iso.match(/(\d{4})-(\d{2})-(\d{2})/);
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+  const m = iso.match(/(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}:\d{2}))?/);
+  if (!m) return iso;
+  const datePart = `${m[3]}/${m[2]}/${m[1]}`;
+  return m[4] ? `${datePart} ${m[4]}` : datePart;
+}
+// Converte "DD/MM/YYYY" ou "DD/MM/YYYY HH:MM" → chave de ordenação "YYYYMMDD" ou "YYYYMMDDHHMM"
+function dateSortKey(d) {
+  const m = d.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
+  if (!m) return d;
+  return m[3] + m[2] + m[1] + (m[4] ? m[4] + m[5] : '');
+}
+// Formata data para cabeçalho: mostra horário em linha separada menor
+function dateDisplayHeader(d) {
+  const m = d.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}:\d{2}))?/);
+  if (!m) return d;
+  if (m[4]) return `${m[1]}/${m[2]}/${m[3]}<br><span style="font-size:10px;color:var(--g500)">${m[4]}</span>`;
+  return d;
 }
 
 function saveLab() {
