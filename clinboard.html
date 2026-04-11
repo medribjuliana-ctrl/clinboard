@@ -2357,7 +2357,10 @@ function isMultiHeader(line) {
   if (/:\s*[−\-]?\d/.test(raw)) return false;
   // Phase 7b: se a linha contém ":" seguido de resultado qualitativo, é data row
   if (/:\s*(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIV|POSITIV|INDETERMINAD|N[ÃA]O\s+DETECT|DETECT[AÁ]VEL)/i.test(raw)) return false;
-  const t = raw.toUpperCase();
+  // Phase 9: normaliza espaços múltiplos → simples. PDF.js pode inserir espaços
+  // duplos entre palavras (ex: "INFLUENZA  A+B") que quebram o startsWith match
+  // contra o MULTI_SECTIONS que usa espaço simples.
+  const t = raw.toUpperCase().replace(/\s+/g, ' ');
   if (MULTI_SECTIONS.some(s => t === s || t.startsWith(s))) return true;
   const extra = _currentLabMultiExtra;
   if (extra && extra.some(s => t === s || t.startsWith(s))) return true;
@@ -2367,7 +2370,10 @@ function isMultiHeader(line) {
 // Phase 8: extracted from inline check — detects single-exam header lines
 // (all-alpha-like, 4-59 chars, not a multi-section header, not structural).
 // Used both in main loop and EAS exit logic to avoid code duplication.
-const _examHeaderExclusion = /^(VALORES|VALOR|SÉRIE|ERITR?OGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI|RESULTADO[S]?\b.*|REFER[ÊE]NCIA[S]?\b.*|IDADE\s|SEXO\s|ELEMENTOS\s+ANORMAIS|SEDIMENTOSCOPIA|N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|N[ÃA]O\s+DETECT|DETECT[AÁ]VEL|N[ÃA]O\s+IMUNE|IMUNE|NOTA\s*:|ANALITO|MATERIAL\s*:|M[EÉ]TODO\s*:|VALIDE\s+SEU|COM\s+O\s+QR|ARTERIAL|VENOSO?A?\b|SERINGA|P[ÁA]GINA)/i;
+// Phase 9: INFLUENZA\s+[AB] adicionado — previne "Influenza A" ou "Influenza B"
+// isolados (split do PDF.js) de serem tratados como exam header, já que são
+// sub-parâmetros do multi-section INFLUENZA A+B.
+const _examHeaderExclusion = /^(VALORES|VALOR|SÉRIE|ERITR?OGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI|RESULTADO[S]?\b.*|REFER[ÊE]NCIA[S]?\b.*|IDADE\s|SEXO\s|ELEMENTOS\s+ANORMAIS|SEDIMENTOSCOPIA|N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|N[ÃA]O\s+DETECT|DETECT[AÁ]VEL|N[ÃA]O\s+IMUNE|IMUNE|NOTA\s*:|ANALITO|MATERIAL\s*:|M[EÉ]TODO\s*:|VALIDE\s+SEU|COM\s+O\s+QR|ARTERIAL|VENOSO?A?\b|SERINGA|P[ÁA]GINA|INFLUENZA\s+[AB]\b)/i;
 function isExamHeaderLine(line) {
   const t = line.trim();
   return /^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\/\-,]*$/.test(t) &&
@@ -2580,6 +2586,22 @@ function parseQualRow(line) {
   if (skipLine(name)) return null;
   const val = m[2].trim();
   return {name:normNameDisplay(name), value:0, valueStr:val, unit:'', refMin:null, refMax:null, isQualitative:true, status:qualStatus(val)};
+}
+// Phase 9: extrai TODOS os qualitativos de uma linha (para linhas merged pelo PDF.js).
+// Ex: "Influenza A : NÃO REAGENTE Influenza B : NÃO REAGENTE" → [Influenza A, Influenza B]
+const _qualAllRe = /([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\.\(\)\+\-\/]*?)[\s.:]+\s*(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE)/gi;
+function parseAllQualRows(line) {
+  const results = [];
+  let m;
+  _qualAllRe.lastIndex = 0;
+  while ((m = _qualAllRe.exec(line)) !== null) {
+    const name = m[1].trim();
+    if (name.length >= 3 && name.length <= 60 && !skipLine(name)) {
+      const val = m[2].trim();
+      results.push({name:normNameDisplay(name), value:0, valueStr:val, unit:'', refMin:null, refMax:null, isQualitative:true, status:qualStatus(val)});
+    }
+  }
+  return results;
 }
 
 // ======================================================================

@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v53 (Phase 9: Y-clustering fix — gasometria A+V separadas no browser)
-const CACHE = 'clinboard-v53';
+// clinBoard Service Worker — v54 (Phase 9: Influenza A+B fix — isMultiHeader space normalization for PDF.js)
+const CACHE = 'clinboard-v54';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [
