@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v45 (Phase 7: same-day multi-collection — datetime columns with HH:MM)
-const CACHE = 'clinboard-v45';
+// clinBoard Service Worker — v46 (Phase 7: same-day multi-collection — conflict dialog, unique date keys, datetime support)
+const CACHE = 'clinboard-v46';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

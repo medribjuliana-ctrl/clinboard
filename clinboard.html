@@ -492,6 +492,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 </div>
 
 <!-- MODAL: CONFIRM -->
+<!-- Modal: conflito de data (mesma data, PDF diferente) -->
+<div class="modal-overlay" id="modal-date-conflict" role="alertdialog" aria-modal="true">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hdr"><span class="modal-title">Coleta duplicada</span><button class="modal-close" onclick="closeModal('modal-date-conflict')" aria-label="Fechar">✕</button></div>
+    <div class="modal-body">
+      <p id="dc-msg" style="font-size:14px;color:var(--g700);margin-bottom:12px"></p>
+    </div>
+    <div class="modal-footer" style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-outline" onclick="closeModal('modal-date-conflict')">Cancelar</button>
+      <button class="btn btn-outline" id="dc-overwrite" style="color:var(--warn)">Substituir existente</button>
+      <button class="btn" id="dc-new-col">Nova coleta</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-confirm" role="alertdialog" aria-modal="true" aria-labelledby="conf-title" aria-describedby="conf-msg">
   <div class="modal">
     <div class="modal-hdr"><span class="modal-title" id="conf-title">Confirmar</span><button class="modal-close" onclick="closeModal('modal-confirm')" aria-label="Fechar">✕</button></div>
@@ -4284,33 +4299,78 @@ function isoToDisplay(iso) {
   const datePart = `${m[3]}/${m[2]}/${m[1]}`;
   return m[4] ? `${datePart} ${m[4]}` : datePart;
 }
-// Converte "DD/MM/YYYY" ou "DD/MM/YYYY HH:MM" → chave de ordenação "YYYYMMDD" ou "YYYYMMDDHHMM"
+// Converte "DD/MM/YYYY", "DD/MM/YYYY HH:MM" ou "DD/MM/YYYY (N)" → chave de ordenação
 function dateSortKey(d) {
-  const m = d.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
+  const m = d.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?(?:\s+\((\d+)\))?/);
   if (!m) return d;
-  return m[3] + m[2] + m[1] + (m[4] ? m[4] + m[5] : '');
+  // Base: YYYYMMDD + hora (se houver) + sufixo (se houver, com padding)
+  let key = m[3] + m[2] + m[1];
+  if (m[4]) key += m[4] + m[5];
+  else key += '0000'; // sem hora → ordena antes de horários
+  key += (m[6] ? m[6].padStart(3,'0') : '000');
+  return key;
 }
-// Formata data para cabeçalho: mostra horário em linha separada menor
+// Formata data para cabeçalho: mostra horário/sufixo em linha separada menor
 function dateDisplayHeader(d) {
-  const m = d.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}:\d{2}))?/);
+  const m = d.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}:\d{2}))?(?:\s+(\(\d+\)))?/);
   if (!m) return d;
-  if (m[4]) return `${m[1]}/${m[2]}/${m[3]}<br><span style="font-size:10px;color:var(--g500)">${m[4]}</span>`;
-  return d;
+  const datePart = `${m[1]}/${m[2]}/${m[3]}`;
+  const extra = [];
+  if (m[4]) extra.push(m[4]);
+  if (m[5]) extra.push(m[5]);
+  if (extra.length) return `${datePart}<br><span style="font-size:10px;color:var(--g500)">${extra.join(' ')}</span>`;
+  return datePart;
 }
 
-function saveLab() {
-  const toSave = extractedResults.filter(r=>r.included);
-  if (toSave.length===0) { toast('Nenhum parâmetro selecionado','err'); return; }
+// ── Helpers para saveLab ──────────────────────────────────────────────
+function _buildDisplayDate() {
   const isoDate = document.getElementById('ext-date-edit')?.value || '';
   const timeVal = document.getElementById('ext-time-edit')?.value || '';
-  // Combina data + hora → "DD/MM/YYYY" ou "DD/MM/YYYY HH:MM"
-  let displayDate;
   if (isoDate) {
-    displayDate = isoToDisplay(isoDate);
-    if (timeVal) displayDate += ' ' + timeVal.slice(0,5); // garante HH:MM
-  } else {
-    displayDate = toSave[0].date || new Date().toLocaleDateString('pt-BR');
+    let d = isoToDisplay(isoDate);
+    if (timeVal) d += ' ' + timeVal.slice(0,5);
+    return d;
   }
+  const toSave = extractedResults.filter(r=>r.included);
+  return (toSave[0]?.date) || new Date().toLocaleDateString('pt-BR');
+}
+
+// Verifica se já existe algum resultado com data cujo prefixo DD/MM/YYYY bate
+function _dateExistsInLab(p, baseDate) {
+  // baseDate pode ser "DD/MM/YYYY" ou "DD/MM/YYYY HH:MM"; extraímos só DD/MM/YYYY
+  const base = baseDate.slice(0,10);
+  const exams = p.labExams || {};
+  for (const param of Object.keys(exams)) {
+    for (const r of exams[param]) {
+      if (r.date.slice(0,10) === base) return true;
+    }
+  }
+  return false;
+}
+
+// Gera uma chave de data única (quando a mesma data-base já existe)
+function _nextUniqueDateKey(p, baseDate) {
+  const base = baseDate.slice(0,10); // DD/MM/YYYY
+  const exams = p.labExams || {};
+  // Coleta todas as chaves de data existentes que começam com essa base
+  const existing = new Set();
+  for (const param of Object.keys(exams)) {
+    for (const r of exams[param]) {
+      if (r.date.slice(0,10) === base) existing.add(r.date);
+    }
+  }
+  // Se o displayDate completo (com hora) já é único, usa ele
+  if (!existing.has(baseDate)) return baseDate;
+  // Senão, tenta sufixos (2), (3), ...
+  for (let n = 2; n <= 99; n++) {
+    const candidate = baseDate + ` (${n})`;
+    if (!existing.has(candidate)) return candidate;
+  }
+  return baseDate + ' (' + Date.now() + ')'; // fallback extremo
+}
+
+function _doSaveLab(displayDate) {
+  const toSave = extractedResults.filter(r=>r.included);
   const p = getPatient(state.unitId, state.patientId);
   if (!p) return;
   if (!p.labExams) p.labExams={};
@@ -4318,7 +4378,6 @@ function saveLab() {
   toSave.forEach(r => {
     const name = r.name;
     if (!p.labExams[name]) p.labExams[name]=[];
-    // Overwrite if same date, otherwise add
     const idx = p.labExams[name].findIndex(x=>x.date===displayDate);
     const numVal = typeof r.value==='number' ? r.value : pNum(String(r.value));
     const isSpecial = r.isCulture || r.isQualitative;
@@ -4330,6 +4389,35 @@ function saveLab() {
   });
   saveDB(); closeModal('modal-upload'); renderLabPanel();
   toast(`${added} parâmetro${added!==1?'s':''} adicionado${added!==1?'s':''}${updated?`, ${updated} atualizado${updated!==1?'s':''}`:''}. ✓`,'ok');
+}
+
+function saveLab() {
+  const toSave = extractedResults.filter(r=>r.included);
+  if (toSave.length===0) { toast('Nenhum parâmetro selecionado','err'); return; }
+  const displayDate = _buildDisplayDate();
+  const p = getPatient(state.unitId, state.patientId);
+  if (!p) return;
+
+  // Verifica se já existe coleta com mesma data-base
+  if (_dateExistsInLab(p, displayDate)) {
+    // Mostra diálogo: Substituir ou Nova coleta?
+    const base = displayDate.slice(0,10);
+    document.getElementById('dc-msg').textContent =
+      `Já existem resultados para ${base}. Deseja substituir os valores existentes ou adicionar como nova coleta?`;
+    document.getElementById('dc-overwrite').onclick = () => {
+      closeModal('modal-date-conflict');
+      _doSaveLab(displayDate);
+    };
+    document.getElementById('dc-new-col').onclick = () => {
+      closeModal('modal-date-conflict');
+      const uniqueDate = _nextUniqueDateKey(p, displayDate);
+      _doSaveLab(uniqueDate);
+    };
+    openModal('modal-date-conflict');
+    return;
+  }
+  // Sem conflito — salva direto
+  _doSaveLab(displayDate);
 }
 
 function toggleImgCustom() {
