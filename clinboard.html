@@ -430,7 +430,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
           </div>
         </div>
         <div style="margin-top:8px;padding:8px 12px;background:var(--g50);border-radius:8px;font-size:12px;color:var(--g500)">
-          Data/hora coleta: <input type="datetime-local" id="ext-date-edit" style="border:1px solid var(--g200);border-radius:5px;padding:2px 6px;font-size:12px;margin-left:6px">
+          Data coleta: <input type="date" id="ext-date-edit" style="border:1px solid var(--g200);border-radius:5px;padding:2px 6px;font-size:12px;margin-left:6px">
+          Hora: <input type="time" id="ext-time-edit" style="border:1px solid var(--g200);border-radius:5px;padding:2px 6px;font-size:12px;margin-left:4px;width:80px" placeholder="--:--">
         </div>
       </div>
       <!-- Step 3b: imaging form -->
@@ -4079,7 +4080,8 @@ function showManualMode() {
   document.getElementById('ext-list').innerHTML = '';
   document.getElementById('ext-date').textContent = '';
   document.getElementById('ext-lab').textContent = 'Manual';
-  document.getElementById('ext-date-edit').value = new Date().toISOString().slice(0,16);
+  document.getElementById('ext-date-edit').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ext-time-edit').value = '';
   showUploadStep(3);
   document.getElementById('btn-save-lab').style.display = '';
 }
@@ -4181,10 +4183,10 @@ const LAB_LABELS = {
 function renderExtracted(labId, date) {
   document.getElementById('ext-date').textContent = date;
   document.getElementById('ext-lab').textContent = LAB_LABELS[labId]||labId;
-  // Preset date/time edit — datetime-local needs "YYYY-MM-DDTHH:MM"
-  const iso = dateToISO(date);
-  const fallbackNow = new Date().toISOString().slice(0,16); // YYYY-MM-DDTHH:MM
-  document.getElementById('ext-date-edit').value = iso || fallbackNow;
+  // Preset date + time inputs separados
+  const dtParts = splitDateTime(date);
+  document.getElementById('ext-date-edit').value = dtParts.isoDate || new Date().toISOString().slice(0,10);
+  document.getElementById('ext-time-edit').value = dtParts.time || ''; // vazio se sem hora
 
   const list = document.getElementById('ext-list');
   const unknownCount = extractedResults.filter(r=>r.known===false).length;
@@ -4267,6 +4269,13 @@ function dateToISO(dmy) {
   const datePart = `${m[3]}-${m[2]}-${m[1]}`;
   return m[4] ? `${datePart}T${m[4]}` : datePart;
 }
+// Separa "DD/MM/YYYY HH:MM" → { isoDate: "YYYY-MM-DD", time: "HH:MM" } ou { isoDate: "YYYY-MM-DD", time: null }
+function splitDateTime(dmy) {
+  if (!dmy) return { isoDate: '', time: null };
+  const m = dmy.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}:\d{2}))?/);
+  if (!m) return { isoDate: '', time: null };
+  return { isoDate: `${m[3]}-${m[2]}-${m[1]}`, time: m[4] || null };
+}
 // Converte ISO (date ou datetime-local) → display "DD/MM/YYYY" ou "DD/MM/YYYY HH:MM"
 function isoToDisplay(iso) {
   if (!iso) return '';
@@ -4293,7 +4302,15 @@ function saveLab() {
   const toSave = extractedResults.filter(r=>r.included);
   if (toSave.length===0) { toast('Nenhum parâmetro selecionado','err'); return; }
   const isoDate = document.getElementById('ext-date-edit')?.value || '';
-  const displayDate = isoDate ? isoToDisplay(isoDate) : (toSave[0].date || new Date().toLocaleDateString('pt-BR'));
+  const timeVal = document.getElementById('ext-time-edit')?.value || '';
+  // Combina data + hora → "DD/MM/YYYY" ou "DD/MM/YYYY HH:MM"
+  let displayDate;
+  if (isoDate) {
+    displayDate = isoToDisplay(isoDate);
+    if (timeVal) displayDate += ' ' + timeVal.slice(0,5); // garante HH:MM
+  } else {
+    displayDate = toSave[0].date || new Date().toLocaleDateString('pt-BR');
+  }
   const p = getPatient(state.unitId, state.patientId);
   if (!p) return;
   if (!p.labExams) p.labExams={};
