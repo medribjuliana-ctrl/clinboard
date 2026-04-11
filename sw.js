@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v46 (Phase 7: same-day multi-collection — conflict dialog, unique date keys, datetime support)
-const CACHE = 'clinboard-v46';
+// clinBoard Service Worker — v50 (Phase 7d: EAS exit fix, singleQual handler, Dengue IgG/IgM support)
+const CACHE = 'clinboard-v50';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

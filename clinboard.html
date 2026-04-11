@@ -971,8 +971,8 @@ const GROUP_ORDER = ['Hemograma','Gasometria Arterial','Gasometria Venosa','Gaso
 
 const EXAM_GROUPS = Object.freeze({
   'Hemograma': ['Hemácias','Hemoglobina','Hematócrito','VCM','HCM','CHCM','RDW','Eritroblastos','Leucócitos','Blastos','Promielócitos','Mielócitos','Metamielócitos','Bastonetes','Segmentados','Neutrófilos','Eosinófilos','Basófilos','Linfócitos','Linfócitos Atípicos','Monócitos','Plasmócitos','Plaquetas','VPM','PDW','PCT'],
-  'Gasometria Arterial': ['pH (Arterial)','PCO2 (Arterial)','PO2 (Arterial)','HCO3 (Arterial)','BE (Arterial)','O2 CT (Arterial)','O2 Sat (Arterial)','Hct (Arterial)','Sódio (Arterial)','Potássio (Arterial)','Glicose (Arterial)','Cálcio iônico','Lactato'],
-  'Gasometria Venosa': ['pH (Venosa)','PCO2 (Venosa)','PO2 (Venosa)','HCO3 (Venosa)','BE (Venosa)','O2 CT (Venosa)','O2 Sat (Venosa)','Hct (Venosa)','Sódio (Venosa)','Potássio (Venosa)','Glicose (Venosa)','Cálcio iônico Venoso','Lactato Venoso'],
+  'Gasometria Arterial': ['pH (Arterial)','PCO2 (Arterial)','PO2 (Arterial)','HCO3 (Arterial)','BE (Arterial)','O2 CT (Arterial)','O2 Sat (Arterial)','TCO2 (Arterial)','Hct (Arterial)','Sódio (Arterial)','Potássio (Arterial)','Glicose (Arterial)','Lactato (Arterial)','Cálcio iônico','Lactato'],
+  'Gasometria Venosa': ['pH (Venosa)','PCO2 (Venosa)','PO2 (Venosa)','HCO3 (Venosa)','BE (Venosa)','O2 CT (Venosa)','O2 Sat (Venosa)','TCO2 (Venosa)','Hct (Venosa)','Sódio (Venosa)','Potássio (Venosa)','Glicose (Venosa)','Lactato (Venosa)','Cálcio iônico Venoso','Lactato Venoso'],
   'Gasometria': ['pH','pCO2','pO2','HCO3','BE','SatO2','TCO2','FiO2','Temperatura'],
   'Bioquímica': ['Ureia','Creatinina','TGO (AST)','TGP (ALT)','Cálcio Total','Bilirrubina Total','Bilirrubina Direta','Bilirrubina Indireta','Albumina','Proteínas Totais','Globulinas','Relação A/G','Fosfatase Alcalina','GGT'],
   'Eletrólitos': ['Sódio','Potássio','Cálcio iônico','Cálcio iônico Venoso','Magnésio','Fósforo','Cloro','Cloretos'],
@@ -1863,6 +1863,8 @@ const NAME_MAP = {
   'A1C':'HbA1c','HEMOGLOBINA A1C':'HbA1c','HB GLICADA':'HbA1c',
   'TROPONINA':'Troponina','CPK':'CPK','CK':'CPK','CREATINOFOSFOQUINASE':'CPK',
   'CK TOTAL':'CPK','CK-TOTAL':'CPK','CREATINA QUINASE':'CPK','CREATINOQUINASE':'CPK',
+  'CREATINA FOSFOQUINASE':'CPK','CREATINA FOSFOQUINASE (CPK)':'CPK', // Phase 7 HOC
+  'CREATINA FOSFOQUINASE (CPK-MB)':'CK-MB', // Phase 7 HOC
   // Phase 6g (Núcleo): CK-MB — variantes CPKMB, CK-MB, CKMB
   'CKMB':'CK-MB','CK-MB':'CK-MB','CKMB MASSA':'CK-MB','CK MB':'CK-MB',
   'CPKMB':'CK-MB','CPK-MB':'CK-MB','CPK MB':'CK-MB','CK-MB MASSA':'CK-MB',
@@ -2096,7 +2098,7 @@ const NAME_MAP = {
   'EBV, IGG':'EBV IgG','EBV, IGM':'EBV IgM',
   'EPSTEIN BARR, IGG':'EBV IgG','EPSTEIN BARR, IGM':'EBV IgM',
   // Sorologias — Dengue
-  'DENGUE NS1':'Dengue NS1','NS1 DENGUE':'Dengue NS1',
+  'DENGUE NS1':'Dengue NS1','NS1 DENGUE':'Dengue NS1','DENGUE - NS1':'Dengue NS1',
   'DENGUE IGG':'Dengue IgG','DENGUE IGM':'Dengue IgM',
   'ANTI-DENGUE IGG':'Dengue IgG','ANTI-DENGUE IGM':'Dengue IgM',
   'DENGUE, NS1':'Dengue NS1','DENGUE, IGG':'Dengue IgG','DENGUE, IGM':'Dengue IgM',
@@ -2106,7 +2108,8 @@ const NAME_MAP = {
   'COVID-19 IGG':'COVID-19 IgG','COVID-19 IGM':'COVID-19 IgM',
   'COVID-19 ANTIGENO':'COVID-19 Ag','COVID-19 ANTÍGENO':'COVID-19 Ag',
   'SARS-COV-2 IGG':'COVID-19 IgG','SARS-COV-2 IGM':'COVID-19 IgM',
-  'SARS-COV-2':'COVID-19','SARS-COV-2 ANTIGENO':'COVID-19 Ag',
+  'SARS-COV-2':'COVID-19','SARS-COV-2 ANTIGENO':'COVID-19 Ag','SARS-COV-2 ANTÍGENO':'COVID-19 Ag',
+  'SARS-COV-2 ANTÍGENO (COVID 19)':'COVID-19 Ag','SARS-COV-2 ANTIGENO (COVID 19)':'COVID-19 Ag',
   'COVID-19, TESTE RAPIDO':'COVID-19 (TR)','COVID-19, TESTE RÁPIDO':'COVID-19 (TR)',
   'COVID-19':'COVID-19',
   // Sorologias — Influenza
@@ -2142,13 +2145,13 @@ const PARAM_WHITELIST = new Set([
   // Extras não cobertos como valores do NAME_MAP
   'TP (segundos)','Cálcio Total','FiO2','Temperatura',
   'Blastos','Promielócitos',
-  // Phase 6h: gasometria (Arterial)/(Venosa) — gerados dinamicamente por _gasoRename
+  // Phase 6h+7: gasometria (Arterial)/(Venosa) — gerados dinamicamente por _gasoRename
   'pH (Arterial)','PCO2 (Arterial)','PO2 (Arterial)','HCO3 (Arterial)','BE (Arterial)',
-  'O2 CT (Arterial)','O2 Sat (Arterial)','Hct (Arterial)','Sódio (Arterial)',
-  'Potássio (Arterial)','Glicose (Arterial)',
+  'O2 CT (Arterial)','O2 Sat (Arterial)','TCO2 (Arterial)','Hct (Arterial)','Sódio (Arterial)',
+  'Potássio (Arterial)','Glicose (Arterial)','Lactato (Arterial)',
   'pH (Venosa)','PCO2 (Venosa)','PO2 (Venosa)','HCO3 (Venosa)','BE (Venosa)',
-  'O2 CT (Venosa)','O2 Sat (Venosa)','Hct (Venosa)','Sódio (Venosa)',
-  'Potássio (Venosa)','Glicose (Venosa)',
+  'O2 CT (Venosa)','O2 Sat (Venosa)','TCO2 (Venosa)','Hct (Venosa)','Sódio (Venosa)',
+  'Potássio (Venosa)','Glicose (Venosa)','Lactato (Venosa)',
   'Cálcio iônico Venoso','Lactato Venoso',
   // Líquor (LCR) — nomes canônicos com sufixo
   'Células (LCR)','Células Nucleadas (LCR)','Hemácias (LCR)','Leucócitos (LCR)',
@@ -2199,7 +2202,7 @@ let _currentLabSkipExtra = null;
 // Lines to skip
 function skipLine(line, extraRegex) {
   const t = line.trim();
-  if (/^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido\s|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica|Referência\s|Referência:|Refer[êe]ncia\s+Adultos|Recém-Nascidos:|Rec[ée]m-Nascidos:|Hora\s+da\s+[Cc]oleta|Evolução\s+do\s+paciente|Notas:|Material\s+biológico|Condições\s+do\s+Paciente|Local\s+da\s+pun[çc][ãa]o|Press[ãa]o\s+(Inicial|Final)|Adultos:|ADULTOS:|Resultado\s*$|VALOR\s+DE\s+REFER|VALORES\s+DE\s+REFER|Valide\s+seu\s+laudo|com\s+o\s+QR\s+Code|Token\s*:|Laudo\s+assinado|Os\s+exames\s+sofrem|Somente\s+seu\s+m[ée]dico|C[óo]d\.\s+Pac|Assinado\s+Por|Doutor\(a\)|Nasc\.\.|Sexo\s*:|P[áa]gina\s*\d|\[Coleta|\[Convenio|Tipo\s+de\s+Coleta|Seringa\s*$|Id\s+Exame|validacao\.|Plasma\s*:|Indicador)/i.test(t)) return true;
+  if (/^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido\s|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica|Referência\s|Referência:|Refer[êe]ncia\s+Adultos|Recém-Nascidos:|Rec[ée]m-Nascidos:|Hora\s+da\s+[Cc]oleta|Evolução\s+do\s+paciente|Notas:|Material\s+biológico|Condições\s+do\s+Paciente|Local\s+da\s+pun[çc][ãa]o|Press[ãa]o\s+(Inicial|Final)|Adultos:|ADULTOS:|Resultado\s*$|Resultado\s+Anterior|Data\s+Resultado\s+Anterior|VALOR\s+DE\s+REFER|VALORES\s+DE\s+REFER|Valide\s+seu\s+laudo|com\s+o\s+QR\s+Code|Token\s*:|Laudo\s+assinado|Os\s+exames\s+sofrem|Somente\s+seu\s+m[ée]dico|C[óo]d\.\s+Pac|Assinado\s+Por|Doutor\(a\)|Nasc\.\.|Sexo\s*:|P[áa]gina\s*\d|\[Coleta|\[Convenio|Tipo\s+de\s+Coleta|Seringa\s*$|Id\s+Exame|validacao\.|Plasma\s*:|Indicador)/i.test(t)) return true;
   // Phase 6d: pular linhas de tabela pediátrica por idade (PioX tem tabelas ref
   // tipo "Até 5 meses  12 - 122 U/L", "6 meses a 11 meses 1 - 39 U/L", "1 a 12 anos",
   // "Recém-Nascido: 8,4 - 25,8 mg/dL", "Crianças < a 7 anos: 13 - 45 U/L", etc).
@@ -2246,10 +2249,13 @@ const GASO_PARAMS = {
   'PCO2':'PCO2','PO2':'PO2','BE':'BE',
   '02 CT':'O2 CT','O2 CT':'O2 CT',
   '02 SAT':'O2 Sat','O2 SAT':'O2 Sat','SATO2':'O2 Sat',
+  'SO2':'O2 Sat', // Phase 7 HOC: SO2 é sinônimo de SatO2
+  'TCO2':'TCO2','CO2 TOTAL':'TCO2', // Phase 7 HOC
   'HCT':'Hct','HEMATÓCRITO':'Hct','HEMATOCRITO':'Hct',
   'SODIO':'Sódio','SÓDIO':'Sódio','NA':'Sódio',
   'POTASSIO':'Potássio','POTÁSSIO':'Potássio','K':'Potássio',
-  'GLICOSE':'Glicose',
+  'GLICOSE':'Glicose','GLI':'Glicose', // Phase 7 HOC: abreviação GLI
+  'LAC':'Lactato','LACTATO':'Lactato', // Phase 7 HOC
   'TIPO DE COLETA':null, // skip — não é param
   // Phase 6g: Hemoglobina dentro da gaso é redundante com hemograma — skip
   'HB':null,'HEMOGLOBINA':null,
@@ -2263,11 +2269,15 @@ const GASO_SPECIAL_NAMES = {
     'CALCIO IONICO':'Cálcio iônico Venoso',
     'CÁLCIO IÔNICO':'Cálcio iônico Venoso',
     'CAI':'Cálcio iônico Venoso',
+    'CA++':'Cálcio iônico Venoso', // Phase 7 HOC
+    'CA+':'Cálcio iônico Venoso',
   },
   'Arterial': {
     'CALCIO IONICO':'Cálcio iônico',
     'CÁLCIO IÔNICO':'Cálcio iônico',
     'CAI':'Cálcio iônico',
+    'CA++':'Cálcio iônico', // Phase 7 HOC
+    'CA+':'Cálcio iônico',
   },
 };
 
@@ -2320,6 +2330,8 @@ function isMultiHeader(line) {
   // do HOC era classificado como header (porque "TEMPO DE PROTROMBINA" está
   // em MULTI_SECTIONS pro Pio X) e o valor sumia.
   if (/:\s*[−\-]?\d/.test(raw)) return false;
+  // Phase 7b: se a linha contém ":" seguido de resultado qualitativo, é data row
+  if (/:\s*(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIV|POSITIV|INDETERMINAD|N[ÃA]O\s+DETECT|DETECT[AÁ]VEL)/i.test(raw)) return false;
   const t = raw.toUpperCase();
   if (MULTI_SECTIONS.some(s => t === s || t.startsWith(s))) return true;
   const extra = _currentLabMultiExtra;
@@ -2418,7 +2430,8 @@ function parseParamRow(line) {
   //         "PH : 7,34   7,35 A 7,45"
   // Phase 6 (Bucket 3 + Bug A): \s{2,} → \s+ pra aceitar colunas separadas por
   // 1 espaço, e refMin/refMax aceitam negativo (BE em gasometria: -3,3 a +2,3)
-  const re = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\+\-\/\.]*?)[\s.:]+([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^0-9·*]+)?\s+([−\-+]?[0-9][0-9.,]*)\s*(?:[-–aA]|[Aa])\s*([−\-+]?[0-9][0-9.,]*)/;
+  // Phase 7b: \s* after sign in ref groups — HOC BE ref "- 3,0 A + 3,0" has space between sign and digit
+  const re = /^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\+\-\/\.]*?)[\s.:]+([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^0-9·*]+)?\s+([−\-+]?\s*[0-9][0-9.,]*)\s*(?:[-–aA]|[Aa])\s*([−\-+]?\s*[0-9][0-9.,]*)/;
   m = t.match(re);
   if (m) {
     const name = m[1].trim();
@@ -2594,6 +2607,7 @@ function parsePDFText(text) {
   let inMulti = false;
   let inMultiRefSkip = false;  // Phase 6h: skip ref tables dentro de multi (Núcleo bilirrubinas)
   const refSkipLineIdx = new Set();  // Phase 6h: indices marcados como ref-skip (p/ second-pass)
+  const multiProcessedIdx = new Set(); // Phase 7 HOC: linhas processadas no inMulti block — pula no second-pass
   let inNota = false;  // Phase 6h: skip Nota: blocks (texto livre que PDF.js pode quebrar em linhas soltas)
   let inLiquor = false;  // Rastreia contexto de líquor para sufixo "(LCR)"
   let _pendingMultiValue = null;  // Phase 6i: valor órfão de linha split (PDF.js gasometria)
@@ -2661,8 +2675,14 @@ function parsePDFText(text) {
         } else { easPhase = 'refs'; }
         continue;
       }
-      // Exit EAS on section separator or new exam type
-      if (isMultiHeader(t) || getCultureType(t)) {
+      // Exit EAS on section separator, new exam type, or new [Coleta:] header
+      // Phase 7c: also exit on isExamHeader-like lines and [Coleta: patterns —
+      // without this, EAS 'refs' phase consumes all subsequent exam sections.
+      const easExamHeaderLike = /^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\/\-,]*$/.test(t) &&
+                                t.length > 3 && t.length < 60 &&
+                                !isMultiHeader(t) &&
+                                !/^(VALORES|VALOR|SÉRIE|ELEMENTOS|SEDIMENTOSCOPIA|CITOMETRIA|CITOLOGIA|NOTA\s*:|ANALITO|MATERIAL\s*:|M[EÉ]TODO\s*:|EXAME\s+|CARACTERES)/i.test(t);
+      if (isMultiHeader(t) || getCultureType(t) || easExamHeaderLike) {
         flushEASPairs(easPendingParams, easPendingValues, date, results);
         inEAS = false; /* fall through */
       } else {
@@ -2689,7 +2709,7 @@ function parsePDFText(text) {
         inCulture = false; /* fall through to multi-header handler */
       } else {
         // Negative result
-        if (/não\s*houve\s+crescimento|^negativo$|sem\s+crescimento|ausência\s+de\s+crescimento|no\s+growth/i.test(line.trim())) {
+        if (/não\s*houve\s+(crescimento|desenvolvimento)|^negativo$|sem\s+(crescimento|desenvolvimento)|ausência\s+de\s+(crescimento|desenvolvimento)|no\s+growth/i.test(line.trim())) {
           results.push({name:currentCultureType, value:0, valueStr:'Negativo', unit:'', refMin:null, refMax:null, date, status:'normal', isCulture:true});
           inCulture = false;
         } else {
@@ -2822,7 +2842,7 @@ function parsePDFText(text) {
     const isExamHeader = /^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\/\-,]*$/.test(line) &&
                          line.length > 3 && line.length < 60 &&
                          !isMultiHeader(line) &&
-                         !/^(VALORES|VALOR|SÉRIE|ERITR?OGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI|RESULTADO[S]?|REFER[ÊE]NCIA[S]?|IDADE\s|SEXO\s|ELEMENTOS\s+ANORMAIS|SEDIMENTOSCOPIA|N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|N[ÃA]O\s+DETECT|DETECT[AÁ]VEL|N[ÃA]O\s+IMUNE|IMUNE|NOTA\s*:|ANALITO|MATERIAL\s*:|M[EÉ]TODO\s*:|VALIDE\s+SEU|COM\s+O\s+QR|ARTERIAL|VENOSO?A?\b|SERINGA|P[ÁA]GINA)/i.test(line);
+                         !/^(VALORES|VALOR|SÉRIE|ERITR?OGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI|RESULTADO[S]?\b.*|REFER[ÊE]NCIA[S]?\b.*|IDADE\s|SEXO\s|ELEMENTOS\s+ANORMAIS|SEDIMENTOSCOPIA|N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|N[ÃA]O\s+DETECT|DETECT[AÁ]VEL|N[ÃA]O\s+IMUNE|IMUNE|NOTA\s*:|ANALITO|MATERIAL\s*:|M[EÉ]TODO\s*:|VALIDE\s+SEU|COM\s+O\s+QR|ARTERIAL|VENOSO?A?\b|SERINGA|P[ÁA]GINA)/i.test(line);
 
     if (isExamHeader) {
       inMulti = false;  // Exit multi-param mode when a new single exam header is detected
@@ -2948,6 +2968,19 @@ function parsePDFText(text) {
         pendingResult = null;
         continue;
       }
+      // Phase 7c: HOC usa "Name : QUAL_VALUE" sem prefixo "Resultado:" para
+      // sorologias individuais (Dengue IgG/IgM, etc.). Quando temos currentExamName
+      // e a linha bate em parseQualRow, aceita como resultado do exame atual.
+      const singleQual = parseQualRow(line);
+      if (singleQual) {
+        if (!SKIP_NAMES.has(singleQual.name.toUpperCase())) {
+          singleQual.date = date;
+          results.push(singleQual);
+        }
+        currentExamName = '';
+        pendingResult = null;
+        continue;
+      }
     }
 
     // Single-line matcher: "EXAM_NAME : VALUE UNIT" com "Valor de Referência"
@@ -3046,14 +3079,20 @@ function parsePDFText(text) {
         }
         row.date = date;
         row.status = getStatus(row.value,row.refMin,row.refMax);
-        if (!SKIP_NAMES.has(row.name.toUpperCase())) results.push(row);
+        if (!SKIP_NAMES.has(row.name.toUpperCase())) {
+          results.push(row);
+          multiProcessedIdx.add(i); // Phase 7 HOC: marca linha como processada
+        }
       } else {
         // Try qualitative row (for toxinas, serologias in multi-param sections)
         const qRow = parseQualRow(line);
         if (qRow) {
           if (inLiquor) qRow.name = _lcrName(qRow.name);
           qRow.date = date;
-          if (!SKIP_NAMES.has(qRow.name.toUpperCase())) results.push(qRow);
+          if (!SKIP_NAMES.has(qRow.name.toUpperCase())) {
+            results.push(qRow);
+            multiProcessedIdx.add(i);
+          }
         }
       }
     }
@@ -3067,6 +3106,9 @@ function parsePDFText(text) {
     // Phase 6h: pular linhas que estavam em modo "ref skip" do multi-section
     // (ex: tabela "referencia" do bilirrubinas Núcleo).
     if (refSkipLineIdx.has(i)) continue;
+    // Phase 7 HOC: pular linhas já processadas no inMulti block (evita duplicar
+    // gasometria params com e sem sufixo Arterial/Venosa).
+    if (multiProcessedIdx.has(i)) continue;
     const row = parseParamRow(line);
     if (row && row.refMin!==null) {
       row.date = date;
@@ -3195,11 +3237,11 @@ const HOCLab = {
   description: 'Hospital Ortopédico de Ceres (CRBM 15121)',
   // Phase 2b: padrões de linhas a ignorar específicos do HOC.
   // Foram migrados do skipLine global — estavam lá apenas para HOC.
-  skipPatterns: /^(Resultado\s+Anterior|VALOR\s+CR[ÍI]TICO|MENOS\s+DE\s+\d|BILIRRUBINA\s+TOTAL\s*\(|BILIRRUBINA\s+(DIRETA|INDIRETA|TOTAL)\s*:\s*[A-Za-z]|GLOBULINA:|RELA[ÇC][ÃA]O\s+A\/G:)/i,
+  skipPatterns: /^(Resultado\s+Anterior|VALOR\s+CR[ÍI]TICO|MENOS\s+DE\s+\d|BILIRRUBINA\s+TOTAL\s*\(|BILIRRUBINA\s+(DIRETA|INDIRETA|TOTAL)\s*:\s*[A-Za-z]|GLOBULINA:|RELA[ÇC][ÃA]O\s+A\/G:|REC[ÉE]M\s*-?\s*NASCIDOS|MESES\s+A\s+\d|SUPERIOR\s+A\s+\d|ADULTOS\s+(AMBULAT|INTERNADOS|MAIOR)|DIAS\s+A\s+\d)/i,
   // Phase 2c: cabeçalhos multi-param específicos do HOC.
   // ERITOGRAMA (sem R) é typo consistente nos laudos — não aparece em nenhum
   // outro lab. Migrado do MULTI_SECTIONS global.
-  multiSections: ['ERITOGRAMA'],
+  multiSections: ['ERITOGRAMA','INFLUENZA A+B'],
   fingerprint(text) {
     if (!text) return 0;
     let score = 0;
@@ -3836,6 +3878,9 @@ const CULTURE_TYPES = {
   'SWAB':'Swab','SWAB RETAL':'Swab Retal','SWAB NASAL':'Swab Nasal',
   'PONTA DE CATETER':'Ponta de Cateter','CATETER':'Ponta de Cateter',
   'CULTURA DE FEZES':'Cultura de Fezes','COPROCULTURA':'Coprocultura',
+  'CULTURA DE VIGILÂNCIA':'MRSA','CULTURA DE VIGILANCIA':'MRSA',
+  'CULTURA DE VIGILÂNCIA - PESQUISA DE MRSA':'MRSA',
+  'PESQUISA DE MRSA':'MRSA',
 };
 
 // Add culture canonical names to whitelist
