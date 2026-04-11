@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v54 (Phase 9: Influenza A+B fix — isMultiHeader space normalization for PDF.js)
-const CACHE = 'clinboard-v54';
+// clinBoard Service Worker — v57 (Phase 10: HUGO — bilirrubinas, DHL/T4L/TSH, BE negativo "- 6,0")
+const CACHE = 'clinboard-v57';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

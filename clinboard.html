@@ -1926,6 +1926,20 @@ const NAME_MAP = {
   'DOSAGEM DE PCR':'PCR','DOSAGEM DE PROCALCITONINA':'Procalcitonina',
   'DOSAGEM DE FERRITINA':'Ferritina','DOSAGEM DE FIBRINOGÊNIO':'Fibrinogênio',
   'DOSAGEM DE LACTATO':'Lactato','DOSAGEM DE LIPASE':'Lipase','DOSAGEM DE AMILASE':'Amilase',
+  'DOSAGEM DE FÓSFORO':'Fósforo','DOSAGEM DE FOSFORO':'Fósforo',
+  'DOSAGEM DE PROTEÍNA C REATIVA':'PCR','DOSAGEM DE PROTEINA C REATIVA':'PCR',
+  'DOSAGEM DE CPK':'CPK','DOSAGEM DE CK-MB':'CK-MB',
+  'DOSAGEM DE TROPONINA I':'Troponina I','DOSAGEM DE TROPONINA':'Troponina',
+  'DOSAGEM DE TRIGLICÉRIDES':'Triglicérides','DOSAGEM DE TRIGLICERIDES':'Triglicérides',
+  'DOSAGEM DE MAGNÉSIO':'Magnésio','DOSAGEM DE MAGNESIO':'Magnésio',
+  'DOSAGEM DE URÉIA':'Ureia','DOSAGEM DE UREIA':'Ureia',
+  'DOSAGEM DE CLORETOS TLR':'Cloretos','DOSAGEM DE CLORETOS':'Cloretos',
+  'DOSAGEM DE DESIDROGENASE LÁCTICA':'DHL','DOSAGEM DE DESIDROGENASE LACTICA':'DHL',
+  'DOSAGEM DE T4L - TIROXINA LIVRE':'T4 Livre','DOSAGEM DE T4L':'T4 Livre',
+  'HORMÔNIO TIREOESTIMULANTE':'TSH','HORMONIO TIREOESTIMULANTE':'TSH',
+  'DOSAGEM DE BILIRRUBINAS TOTAIS E FRAÇÕES':'Bilirrubinas','DOSAGEM DE BILIRRUBINAS TOTAIS E FRACOES':'Bilirrubinas',
+  'DOSAGEM DE COLESTEROL TOTAL E FRAÇÕES':'Colesterol Total',
+  'DOSAGEM DE COLESTEROL TOTAL E FRACOES':'Colesterol Total',
   // Nomes alternativos de enzimas
   'ALANINA AMINO TRANSFERASE (TGP/ALT)':'TGP (ALT)','ALANINA AMINOTRANSFERASE':'TGP (ALT)',
   'ASPARTATO AMINO TRANSFERASE (TGO/AST)':'TGO (AST)','ASPARTATO AMINOTRANSFERASE':'TGO (AST)',
@@ -2027,6 +2041,7 @@ const NAME_MAP = {
   'VITAMINA B12':'Vitamina B12','VITAMINA D':'Vitamina D','VITAMINA D 25':'Vitamina D',
   '25-OH VITAMINA D':'Vitamina D',
   'COLESTEROL TOTAL':'Colesterol Total','COLESTEROL HDL':'HDL','COLESTEROL LDL':'LDL',
+  'HDL COLESTEROL':'HDL','LDL COLESTEROL':'LDL','COLESTEROL NÃO-HDL':'Colesterol Não-HDL','COLESTEROL NAO-HDL':'Colesterol Não-HDL',
   'HDL':'HDL','LDL':'LDL','VLDL':'VLDL','TRIGLICERIDES':'Triglicérides','TRIGLICÉRIDES':'Triglicérides',
   'PARATORMONIO':'PTH','PARATORMÔNIO':'PTH','PTH':'PTH',
   'INSULINA':'Insulina','PEPTIDEO C':'Peptídeo C','PEPTÍDEO C':'Peptídeo C',
@@ -2227,7 +2242,7 @@ let _currentLabSkipExtra = null;
 // Lines to skip
 function skipLine(line, extraRegex) {
   const t = line.trim();
-  if (/^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido\s|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica|Referência\s|Referência:|Refer[êe]ncia\s+Adultos|Recém-Nascidos:|Rec[ée]m-Nascidos:|Hora\s+da\s+[Cc]oleta|Evolução\s+do\s+paciente|Notas:|Material\s+biológico|Condições\s+do\s+Paciente|Local\s+da\s+pun[çc][ãa]o|Press[ãa]o\s+(Inicial|Final)|Adultos:|ADULTOS:|Resultado\s*$|Resultado\s+Anterior|Data\s+Resultado\s+Anterior|VALOR\s+DE\s+REFER|VALORES\s+DE\s+REFER|Valide\s+seu\s+laudo|com\s+o\s+QR\s+Code|Token\s*:|Laudo\s+assinado|Os\s+exames\s+sofrem|Somente\s+seu\s+m[ée]dico|C[óo]d\.\s+Pac|Assinado\s+Por|Doutor\(a\)|Nasc\.\.|Sexo\s*:|P[áa]gina\s*\d|\[Coleta|\[Convenio|Tipo\s+de\s+Coleta|Seringa\s*$|Id\s+Exame|validacao\.|Plasma\s*:|Indicador)/i.test(t)) return true;
+  if (/^(Hash|Impresso|Responsável|Registro|CNES|CRF|CRBM\s|Liberação:|Liberado|Liberação|Médico\s|Material:|Método\s|Método:|Coletado|Coleta\.\.|Data\s+Nasc|Sr\(a\)|Pedido[\s:]|Serviço|Convênio|Paciente\s*:|Nome\s+social|Dr\(a\)|Dt\.\s|CPF:|RG:|Pront\.|ASSINATURA|Responsável\s+Técnico|Nota:|Obs:|Referência\s+Bibliográfica|Referência\s|Referência:|Refer[êe]ncia\s+Adultos|Recém-Nascidos:|Rec[ée]m-Nascidos:|Hora\s+da\s+[Cc]oleta|Evolução\s+do\s+paciente|Notas:|Material\s+biológico|Condições\s+do\s+Paciente|Local\s+da\s+pun[çc][ãa]o|Press[ãa]o\s+(Inicial|Final)|Adultos:|ADULTOS:|Resultado\s*$|Resultado\s+Anterior|Data\s+Resultado\s+Anterior|VALOR\s+DE\s+REFER|VALORES\s+DE\s+REFER|Valide\s+seu\s+laudo|com\s+o\s+QR\s+Code|Token\s*:|Laudo\s+assinado|Os\s+exames\s+sofrem|Somente\s+seu\s+m[ée]dico|C[óo]d\.\s+Pac|Assinado\s+Por|Doutor\(a\)|Nasc\.\.|Sexo\s*:|P[áa]gina\s*\d|\[Coleta|\[Convenio|Tipo\s+de\s+Coleta|Seringa\s*$|Id\s+Exame|validacao\.|Plasma\s*:|Indicador)/i.test(t)) return true;
   // Phase 6d: pular linhas de tabela pediátrica por idade (PioX tem tabelas ref
   // tipo "Até 5 meses  12 - 122 U/L", "6 meses a 11 meses 1 - 39 U/L", "1 a 12 anos",
   // "Recém-Nascido: 8,4 - 25,8 mg/dL", "Crianças < a 7 anos: 13 - 45 U/L", etc).
@@ -2340,6 +2355,12 @@ const MULTI_SECTIONS = [
   'BILIRRUBINAS TOTAIS E FRAÇÕES','BILIRRUBINAS TOTAIS E FRACOES',
   'PROTEINAS TOTAIS E FRAÇÕES','PROTEÍNAS TOTAIS E FRAÇÕES',
   'PROTEINAS TOTAIS E FRACOES','PROTEÍNAS TOTAIS E FRACOES',
+  // Phase 10: HUGO lipid panel (inline "NAME: VALUE UNIT" format)
+  'DOSAGEM DE COLESTEROL TOTAL E FRAÇÕES','DOSAGEM DE COLESTEROL TOTAL E FRACOES',
+  'COLESTEROL TOTAL E FRAÇÕES','COLESTEROL TOTAL E FRACOES',
+  // Phase 10: HUGO bilirrubinas (inline "Bilirrubina Total : 0,5 mg/dL" format)
+  'DOSAGEM DE BILIRRUBINAS TOTAIS E FRAÇÕES','DOSAGEM DE BILIRRUBINAS TOTAIS E FRACOES',
+  'BILIRRUBINAS TOTAIS E FRAÇÕES','BILIRRUBINAS TOTAIS E FRACOES',
   // Coagulação (TAP/INR em formato multi-param — Pio X)
   'TEMPO DE PROTOMBINA','TEMPO DE PROTROMBINA',
   'TEMPO DE ATIVIDADE DA PROTROMBINA',
@@ -2789,8 +2810,10 @@ function parsePDFText(text) {
     }
     if (inNota) {
       // Sai do Nota: block quando encontra nova estrutura
+      // Phase 10: adicionado isExamHeaderLine e separadores "---" para sair de Nota:
+      // corretamente no HUGO (DOSAGEM DE SÓDIO ficava engolido pelo Nota: anterior).
       if (/^\s*(?:Exame\s*:|^\[Convenio|^\[Coleta|\[Convenio|\[Coleta|Dt\.\s+Cadastro|Paciente\s*:)/i.test(line) ||
-          isMultiHeader(line)) {
+          isMultiHeader(line) || isExamHeaderLine(line) || /^[-=]{3,}$/.test(line.trim())) {
         inNota = false;
         // fall through para processar a linha normalmente
       } else {
@@ -2928,6 +2951,20 @@ function parsePDFText(text) {
     // Phase 6h: aceita também "Plasma do Paciente (P):" como rótulo (TTPA Núcleo)
     //           e parens na unit ("segundo(s)").
     const resMatch = line.match(/(?:resultado[s]?|plasma\s+do\s+paciente\s*\(p\))[\s.:>]*:\s*([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^·0-9()]+)?/i);
+    // Phase 10: "Resultado: < 5,0 mg/L" — below detection limit
+    if (!resMatch && !inMulti && currentExamName) {
+      const ltResMatch = line.match(/resultado[s]?[\s.:>]*:\s*<\s*([0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^·0-9()]+)?/i);
+      if (ltResMatch) {
+        const valStr = '< ' + ltResMatch[1];
+        const name = normNameDisplay(currentExamName);
+        if (!SKIP_NAMES.has(name.toUpperCase())) {
+          results.push({name, value:0, valueStr:valStr, unit:(ltResMatch[2]||'').trim(), refMin:null, refMax:null, date, status:'normal', isQualitative:true});
+        }
+        currentExamName = '';
+        pendingResult = null;
+        continue;
+      }
+    }
     if (resMatch && !inMulti) {
       const val = pNum(resMatch[1]);
       const unit = (resMatch[2]||'').trim();
@@ -2942,6 +2979,11 @@ function parsePDFText(text) {
           const cand = inlineRefSameLine[1].trim();
           const {refMin:mn, refMax:mx} = parseRef(cand);
           if (mn !== null || mx !== null) { ref = cand; }
+        }
+        // Phase 10 HUGO: "Inferior a N" / "< N" inline on same Resultado line
+        if (!ref) {
+          const ltInline = line.match(/(?:inferior\s+a|menor\s+(?:que\s+)?|<)\s*([0-9][0-9.,]*)/i);
+          if (ltInline) { ref = `< ${ltInline[1]}`; }
         }
         for (let j=i+1; j<Math.min(i+12, lines.length); j++) {
           const lj = lines[j];
@@ -3513,7 +3555,7 @@ const HUGOLab = {
     if (/CNES[\s.:]*0697699/i.test(text)) score += 10;
     if (/CRBM[\s:]*02383/i.test(text)) score += 8;
     if (/Bruna\s+Carneiro\s+Vieira\s+Paix[ãa]o/i.test(text)) score += 6;
-    if (/HUGO\s*-\s*UTI/i.test(text)) score += 5;
+    if (/HUGO\s*-\s*(UTI|PRONTO)/i.test(text)) score += 5;
     if (/Setor\s+Marista[^\n]*Goi[âa]nia/i.test(text)) score += 5;
     if (/Avenida\s+31\s+de\s+mar[çc]o[^\n]*Pedro\s+Ludovico/i.test(text)) score += 5;
     if (/ANVISA\s*350055/i.test(text)) score += 3;
@@ -3524,10 +3566,70 @@ const HUGOLab = {
   // "EXAM : VALUE UNIT  REF" alinhado por espaços e o multi-param row matcher
   // já dá conta; se o single-line rodar em paralelo, duplica cada parâmetro
   // do hemograma (SÉRIE ERITROCITÁRIA/LEUCOCITÁRIA/PLAQUETÁRIA).
+  // Phase 10: pre-processing para normalizar quirks do HUGO antes de parsePDFText.
   parse(text) {
     _currentLabSingleLineEnabled = false;
     try {
-      return parsePDFText(text);
+      const srcLines = text.split('\n');
+      const processed = [];
+      let inEvolucao = false;
+      for (let i = 0; i < srcLines.length; i++) {
+        let line = srcLines[i];
+
+        // 10f. Skip "Evolução do paciente" historical data blocks
+        // These tables contain past values that create false positives.
+        if (/evolu[çc][ãa]o\s+do\s+paciente/i.test(line)) {
+          inEvolucao = true;
+        }
+        if (inEvolucao) {
+          if (/^[-=]{3,}$/.test(line.trim()) || /^(DOSAGEM|GASOMETRIA|HEMOGRAMA|TEMPO DE|Avenida|Impresso|Responsável)/i.test(line.trim())) {
+            inEvolucao = false;
+            // fall through to process this line
+          } else {
+            processed.push(''); // blank = will be filtered by parsePDFText
+            continue;
+          }
+        }
+
+        // 10a. Strip "Valores de Referência" / "Valores Absolutos" suffix
+        // "DOSAGEM DE FÓSFORO    Valores de Referência" → "DOSAGEM DE FÓSFORO"
+        line = line.replace(/\s{3,}Valores?\s+(?:de\s+)?[Rr]efer[eê]ncia\s*$/i, '');
+        line = line.replace(/\s{3,}Valores?\s+Absolutos\s+.*$/i, '');
+
+        // 10b. Fix leucocitária "74,6 %:" → "74,6 % " (colon after percent)
+        // "Neutrófilos    74,6 %:" → "Neutrófilos    74,6 % "
+        line = line.replace(/(\d[0-9.,]*\s+%)\s*:/g, '$1 ');
+
+        // 10g. Normalize "- 6,0" → "-6,0" (space between minus and number in BE values)
+        line = line.replace(/(:\s*)- (\d)/g, '$1-$2');
+
+        // 10c. Merge Leucócitos split-line (name on one line, value on next)
+        // "Leucócitos :\n   10,42 x10~3/uL   10.420 uL   3.500 - 10.500 uL"
+        // → "Leucócitos : 10.420 /mm³   3.500 - 10.500 /mm³"
+        const trimmed = line.trim();
+        if (/^Leuc[oó]citos\s*:?\s*$/i.test(trimmed) && i + 1 < srcLines.length) {
+          const nextLine = srcLines[i + 1];
+          const lm = nextLine.match(/\s*[\d.,]+\s*x10~\d\/[uµ][Ll]\s+([\d.]+)\s+[uµ][Ll]\s+([\d.]+)\s*[-–]\s*([\d.]+)\s+[uµ][Ll]/i);
+          if (lm) {
+            line = `Leucócitos : ${lm[1]} /mm³   ${lm[2]} - ${lm[3]} /mm³`;
+            i++; // skip next line (already consumed)
+          } else {
+            line = trimmed + ' ' + srcLines[i + 1].trim();
+            i++;
+          }
+        }
+
+        // 10d. Normalize Plaquetas x10~3 → absolute values
+        // "Plaquetas: 255 x10~3/uL   255000 uL   150000 - 450000 uL"
+        // → "Plaquetas : 255000 /mm³   150000 - 450000 /mm³"
+        const plaqMatch = line.match(/^(Plaquetas\s*:\s*)[\d.,]+\s*x10~\d\/[uµ][Ll]\s+([\d.]+)\s+[uµ][Ll]\s+([\d.]+)\s*[-–]\s*([\d.]+)\s+[uµ][Ll]/i);
+        if (plaqMatch) {
+          line = `${plaqMatch[1]}${plaqMatch[2]} /mm³   ${plaqMatch[3]} - ${plaqMatch[4]} /mm³`;
+        }
+
+        processed.push(line);
+      }
+      return parsePDFText(processed.join('\n'));
     } finally {
       _currentLabSingleLineEnabled = true;
     }
