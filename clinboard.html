@@ -463,6 +463,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-upload')">Cancelar</button>
+      <button class="btn btn-outline" id="btn-debug-text" style="display:none;font-size:11px" onclick="copyDebugText()">📋 Copiar texto extraído</button>
       <button class="btn btn-primary" id="btn-save-lab" style="display:none" onclick="saveLab()">Salvar Resultados</button>
       <button class="btn btn-primary" id="btn-save-img" style="display:none" onclick="saveImg()">Salvar Exame</button>
     </div>
@@ -1622,11 +1623,13 @@ async function extractPDFText(file) {
   let text = '';
 
   // ── Constantes heurísticas ─────────────────────────────────────────
-  // Y_SNAP_PX: tolerância de agrupamento vertical. Itens com Y dentro de
-  // ±4px são considerados na mesma linha. Funciona para fontes 9-14pt
-  // típicas de laudos laboratoriais. Se PDFs com fonte muito pequena
-  // (<8pt) não agruparem corretamente, reduzir para 2.
-  const Y_SNAP_PX = 4;
+  // Y_CLUSTER_PX: tolerância de agrupamento vertical por clustering.
+  // Phase 9: substituído Y_SNAP (round-snap) por clustering — o snap
+  // criava fronteiras rígidas que separavam itens da mesma linha visual
+  // quando o PDF tinha Y ligeiramente diferentes para nome, ":", valor
+  // e referência (~2-3px de diferença nos HOC). Clustering agrupa itens
+  // consecutivos cujo Y está dentro do threshold, sem fronteiras fixas.
+  const Y_CLUSTER_PX = 3;
 
   // CHAR_WIDTH_EST: largura média estimada por caractere (em unidades PDF)
   // para calcular o gap visual entre itens adjacentes. Calibrado para
@@ -1646,28 +1649,48 @@ async function extractPDFText(file) {
   for (let pg = 1; pg <= pdf.numPages; pg++) {
     const page = await pdf.getPage(pg);
     const content = await page.getTextContent();
-    // Group by Y to reconstruct lines
-    const yMap = {};
+    // Phase 9: Y-clustering — agrupa itens por proximidade vertical.
+    // 1) Coleta todos os itens com suas posições X/Y
+    const rawItems = [];
     for (const item of content.items) {
-      const y = Math.round(item.transform[5] / Y_SNAP_PX) * Y_SNAP_PX;
-      if (!yMap[y]) yMap[y] = [];
-      yMap[y].push({ x: item.transform[4], s: item.str });
+      if (!item.str || !item.str.trim()) continue;
+      rawItems.push({ x: item.transform[4], y: item.transform[5], s: item.str });
     }
-    const lines = Object.keys(yMap)
-      .map(Number).sort((a,b)=>b-a)
-      .map(y => {
-        const items = yMap[y].sort((a,b)=>a.x-b.x);
-        let result = '';
-        for (let k=0; k<items.length; k++) {
-          if (k>0) {
-            const gap = items[k].x - items[k-1].x - (items[k-1].s.length * CHAR_WIDTH_EST);
-            result += gap < JOIN_THRESH ? '' : gap > DOUBLE_SPACE ? '   ' : gap > SINGLE_SPACE ? '  ' : ' ';
-          }
-          result += items[k].s;
+    // 2) Ordena por Y descendente (topo da página = Y maior em PDF coords)
+    rawItems.sort((a,b) => b.y - a.y);
+    // 3) Cluster: agrupa itens cujo Y está dentro de Y_CLUSTER_PX do
+    //    centro do cluster mais próximo. Sem fronteiras fixas.
+    const clusters = []; // [{yCenter, items:[]}]
+    for (const item of rawItems) {
+      let placed = false;
+      for (const cl of clusters) {
+        if (Math.abs(item.y - cl.yCenter) <= Y_CLUSTER_PX) {
+          cl.items.push(item);
+          // Atualiza centro como média corrida
+          const n = cl.items.length;
+          cl.yCenter = (cl.yCenter * (n - 1) + item.y) / n;
+          placed = true;
+          break;
         }
-        return result.trim();
-      })
-      .filter(l=>l.length>0);
+      }
+      if (!placed) {
+        clusters.push({ yCenter: item.y, items: [item] });
+      }
+    }
+    // 4) Ordena clusters por Y descendente e reconstrói linhas
+    clusters.sort((a,b) => b.yCenter - a.yCenter);
+    const lines = clusters.map(cl => {
+      const items = cl.items.sort((a,b) => a.x - b.x);
+      let result = '';
+      for (let k = 0; k < items.length; k++) {
+        if (k > 0) {
+          const gap = items[k].x - items[k-1].x - (items[k-1].s.length * CHAR_WIDTH_EST);
+          result += gap < JOIN_THRESH ? '' : gap > DOUBLE_SPACE ? '   ' : gap > SINGLE_SPACE ? '  ' : ' ';
+        }
+        result += items[k].s;
+      }
+      return result.trim();
+    }).filter(l => l.length > 0);
     text += lines.join('\n') + '\n';
   }
   // Normaliza para NFC (Unicode composto). PDF.js pode produzir NFD (decomposto)
@@ -1741,9 +1764,11 @@ function parseRef(s) {
   if (m) return {refMin:pNum(m[1]),refMax:pNum(m[2])};
   m = s.match(/([0-9][0-9.,]*)\s+[aA]\s+([0-9][0-9.,]*)/);
   if (m) return {refMin:pNum(m[1]),refMax:pNum(m[2])};
-  m = s.match(/(?:inferior\s+a|at[ée]|menor(?:\s+que)?|<)\s*([0-9][0-9.,]*)/i);
+  // Phase 8: "MENOR 55", "INFERIOR A 8", "ATÉ 115", "< 500"
+  m = s.match(/(?:inferior\s+a|at[ée]|menor(?:\s+(?:que|de|ou\s+igual))?|<)\s*([0-9][0-9.,]*)/i);
   if (m) return {refMin:0,refMax:pNum(m[1])};
-  m = s.match(/(?:superior\s+a|maior(?:\s+que)?|>)\s*([0-9][0-9.,]*)/i);
+  // Phase 8: "SUPERIOR A 20", "MAIOR 10", "SUPERIOR OU IGUAL A 1,1", "> 100"
+  m = s.match(/(?:superior(?:\s+(?:a|ou\s+igual\s+a))?|maior(?:\s+(?:que|de|ou\s+igual))?|>)\s*([0-9][0-9.,]*)/i);
   if (m) return {refMin:pNum(m[1]),refMax:null};
   return {refMin:null,refMax:null};
 }
@@ -2339,6 +2364,18 @@ function isMultiHeader(line) {
   return false;
 }
 
+// Phase 8: extracted from inline check — detects single-exam header lines
+// (all-alpha-like, 4-59 chars, not a multi-section header, not structural).
+// Used both in main loop and EAS exit logic to avoid code duplication.
+const _examHeaderExclusion = /^(VALORES|VALOR|SÉRIE|ERITR?OGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI|RESULTADO[S]?\b.*|REFER[ÊE]NCIA[S]?\b.*|IDADE\s|SEXO\s|ELEMENTOS\s+ANORMAIS|SEDIMENTOSCOPIA|N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|N[ÃA]O\s+DETECT|DETECT[AÁ]VEL|N[ÃA]O\s+IMUNE|IMUNE|NOTA\s*:|ANALITO|MATERIAL\s*:|M[EÉ]TODO\s*:|VALIDE\s+SEU|COM\s+O\s+QR|ARTERIAL|VENOSO?A?\b|SERINGA|P[ÁA]GINA)/i;
+function isExamHeaderLine(line) {
+  const t = line.trim();
+  return /^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\/\-,]*$/.test(t) &&
+         t.length > 3 && t.length < 60 &&
+         !isMultiHeader(t) &&
+         !_examHeaderExclusion.test(t);
+}
+
 // Parse multi-parameter rows: "PARAM_NAME : VALUE UNIT   MIN - MAX UNIT"
 // Many variations
 function parseParamRow(line) {
@@ -2521,7 +2558,7 @@ const QUAL_STATUS = {
   'INCOLOR':'normal','CRISTALINO':'normal',
   'TURVO':'high','LIGEIRAMENTE TURVO':'low','OPACO':'high',
   'HEMORRÁGICO':'high','HEMORRAGICO':'high','XANTOCRÔMICO':'high','XANTOCROMICO':'high',
-  'AMARELADO':'low','ROSADO':'low','AVERMELHADO':'high',
+  'AMARELADO':'low','ROSADO':'high','AVERMELHADO':'high',
   'PRESENTE':'high',
 };
 
@@ -2529,7 +2566,7 @@ const QUAL_PATTERN = /^(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|P
 
 function qualStatus(txt) {
   const u = txt.trim().toUpperCase().replace(/\s+/g,' ');
-  return QUAL_STATUS[u] || 'low';
+  return QUAL_STATUS[u] || 'unknown';
 }
 
 // Parse qualitative row: "NAME : QUALITATIVE_VALUE  ref?"
@@ -2675,14 +2712,9 @@ function parsePDFText(text) {
         } else { easPhase = 'refs'; }
         continue;
       }
-      // Exit EAS on section separator, new exam type, or new [Coleta:] header
-      // Phase 7c: also exit on isExamHeader-like lines and [Coleta: patterns —
-      // without this, EAS 'refs' phase consumes all subsequent exam sections.
-      const easExamHeaderLike = /^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\/\-,]*$/.test(t) &&
-                                t.length > 3 && t.length < 60 &&
-                                !isMultiHeader(t) &&
-                                !/^(VALORES|VALOR|SÉRIE|ELEMENTOS|SEDIMENTOSCOPIA|CITOMETRIA|CITOLOGIA|NOTA\s*:|ANALITO|MATERIAL\s*:|M[EÉ]TODO\s*:|EXAME\s+|CARACTERES)/i.test(t);
-      if (isMultiHeader(t) || getCultureType(t) || easExamHeaderLike) {
+      // Exit EAS on section separator, new exam type, or new exam header
+      // Phase 8: uses shared isExamHeaderLine() instead of inline duplicate
+      if (isMultiHeader(t) || getCultureType(t) || isExamHeaderLine(t)) {
         flushEASPairs(easPendingParams, easPendingValues, date, results);
         inEAS = false; /* fall through */
       } else {
@@ -2836,15 +2868,8 @@ function parsePDFText(text) {
     // blocos inMulti e single-line, permitindo que essas linhas resetassem o estado.
     if (skipLine(line)) continue;
 
-    // SINGLE EXAM: detect exam name line (all-caps, no numbers, not a section)
-    // Then look for "Resultado:" in next few lines
-    // Allow "-" in name (e.g. "TGO -TRANSAMINASE OXALACETICA", "TGP - TRANSAMINASE PIRUVICA")
-    const isExamHeader = /^[A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\(\)\/\-,]*$/.test(line) &&
-                         line.length > 3 && line.length < 60 &&
-                         !isMultiHeader(line) &&
-                         !/^(VALORES|VALOR|SÉRIE|ERITR?OGRAMA|LEUCOGRAMA|PLAQUETOGRAMA|BIOQU[ÍI]MICA|CARACTERES|CITOMETRIA|CITOLOGIA|COAGULA[ÇC][AÃ]O|EXAME\s+(MICROSC|BIOQU[ÍI]M|F[ÍI]S|QU[ÍI]M)|CITOL[ÓO]GICO\s+DIF|ANTES\s+DA\s+CENTRI|AP[ÓO]S\s+A\s+CENTRI|RESULTADO[S]?\b.*|REFER[ÊE]NCIA[S]?\b.*|IDADE\s|SEXO\s|ELEMENTOS\s+ANORMAIS|SEDIMENTOSCOPIA|N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|N[ÃA]O\s+DETECT|DETECT[AÁ]VEL|N[ÃA]O\s+IMUNE|IMUNE|NOTA\s*:|ANALITO|MATERIAL\s*:|M[EÉ]TODO\s*:|VALIDE\s+SEU|COM\s+O\s+QR|ARTERIAL|VENOSO?A?\b|SERINGA|P[ÁA]GINA)/i.test(line);
-
-    if (isExamHeader) {
+    // SINGLE EXAM: detect exam name line (Phase 8: uses shared isExamHeaderLine)
+    if (isExamHeaderLine(line)) {
       inMulti = false;  // Exit multi-param mode when a new single exam header is detected
       inMultiRefSkip = false;
       inLiquor = false; // Exit liquor context
@@ -3119,7 +3144,8 @@ function parsePDFText(text) {
         // Phase 6e: também normaliza " (LCR)" (marcador líquor) pra não duplicar
         // Glicose/Cloro/Proteínas que aparecem tanto via _lcrName no inMulti quanto
         // na second-pass (IMEC líquor). Normaliza também "Cloro"<->"Cloretos".
-        const stripSuf = s => String(s).replace(/\s*\((U|LCR)\)\s*$/, '').trim().toLowerCase().replace(/^cloro$/,'cloretos').replace(/^prote[ií]nas?(\s+totais)?$/,'proteinas').replace(/^c[eé]lulas(\s+nucleadas)?$/,'celulas nucleadas');
+        // Phase 8: removido merge de "Células" → "Células Nucleadas" (são clinicamente distintos no LCR)
+        const stripSuf = s => String(s).replace(/\s*\((U|LCR)\)\s*$/, '').trim().toLowerCase().replace(/^cloro$/,'cloretos').replace(/^prote[ií]nas?\s+totais$/,'proteinas totais');
         const rn = stripSuf(row.name);
         const dup = results.find(r => stripSuf(r.name)===rn && r.date===row.date && String(r.value)===String(row.value));
         if (!dup) results.push(row);
@@ -4109,11 +4135,18 @@ async function processFile(file) {
   try {
     document.getElementById('proc-status').textContent = 'Lendo PDF...';
     const text = await extractPDFText(file);
+    // Phase 9: debug — salva texto extraído pra diagnóstico
+    console.debug('[clinBoard] ===== TEXTO EXTRAÍDO (PDF.js) =====');
+    console.debug(text);
+    console.debug('[clinBoard] ===== FIM TEXTO EXTRAÍDO =====');
+    window._lastExtractedText = text; // acessível via console: copy(window._lastExtractedText)
     document.getElementById('proc-status').textContent = 'Analisando resultados...';
     // Phase 5 (C2): roteamento 100% via LabRegistry + fingerprints.
     // detectFormat() foi removido e o parser não recebe mais `format`.
     const { lab: detectedLab, results } = LabRegistry.run(text);
     if (detectedLab) console.debug('[clinBoard] Lab detectado:', detectedLab.id);
+    console.debug('[clinBoard] Resultados:', results.length, 'linhas');
+    console.debug('[clinBoard] Primeiros 5:', results.slice(0,5).map(r=>r.name+'='+r.valueStr));
     const date = findDate(text);
     if (!date) toast('Data de coleta não encontrada no PDF — verifique a data antes de salvar.', 'warn');
     if (results.length === 0) {
@@ -4129,10 +4162,28 @@ async function processFile(file) {
     renderExtracted(labKey, date);
     showUploadStep(3);
     document.getElementById('btn-save-lab').style.display = '';
+    document.getElementById('btn-debug-text').style.display = '';
   } catch(e) {
     document.getElementById('err-msg').textContent = e.message || 'Erro ao processar o PDF.';
     showUploadStep('err');
   }
+}
+
+// Phase 9: debug — copia texto extraído pelo PDF.js pro clipboard
+function copyDebugText() {
+  const t = window._lastExtractedText;
+  if (!t) { toast('Nenhum texto extraído disponível','warn'); return; }
+  navigator.clipboard.writeText(t).then(
+    () => toast('Texto extraído copiado! Cole num arquivo .txt e me envie.','ok'),
+    () => {
+      // fallback: textarea
+      const ta = document.createElement('textarea');
+      ta.value = t; ta.style.cssText='position:fixed;left:-9999px';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('Texto extraído copiado!','ok');
+    }
+  );
 }
 
 function showManualMode() {

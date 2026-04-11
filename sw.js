@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v50 (Phase 7d: EAS exit fix, singleQual handler, Dengue IgG/IgM support)
-const CACHE = 'clinboard-v50';
+// clinBoard Service Worker — v53 (Phase 9: Y-clustering fix — gasometria A+V separadas no browser)
+const CACHE = 'clinboard-v53';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [
