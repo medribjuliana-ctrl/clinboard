@@ -1,5 +1,5 @@
-// clinBoard Service Worker — v57 (Phase 10: HUGO — bilirrubinas, DHL/T4L/TSH, BE negativo "- 6,0")
-const CACHE = 'clinboard-v57';
+// clinBoard Service Worker — v62 (Phase 11.4: IMEC sorologias — Notas:/_separator regex, Índice: label + ÍNDICE modifier, paired-serology context, Dengue/HIV/HAV/HBs/Lepto/HCV/Chikungunya NAME_MAP)
+const CACHE = 'clinboard-v62';
 
 // Arquivos a cachear para funcionamento offline
 const ASSETS = [

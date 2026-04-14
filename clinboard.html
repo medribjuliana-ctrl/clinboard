@@ -1846,7 +1846,9 @@ const NAME_MAP = {
   'SODIO':'Sódio','SÓDIO':'Sódio',
   'POTASSIO':'Potássio','POTÁSSIO':'Potássio',
   'CALCIO IONICO':'Cálcio iônico','CÁLCIO IÔNICO':'Cálcio iônico',
-  'CALCIO IONICO ARTERIAL':'Cálcio iônico','CÁLCIO IÔNICO ARTERIAL':'Cálcio iônico',
+  // Phase 11 (IMEC): header "CÁLCIO IÔNICO ARTERIAL" é exam próprio em IMEC —
+  // preservar sufixo (Arterial). Outros labs usam gasometria → _gasoRename.
+  'CALCIO IONICO ARTERIAL':'Cálcio iônico (Arterial)','CÁLCIO IÔNICO ARTERIAL':'Cálcio iônico (Arterial)',
   // Phase 6g (Núcleo): Cálcio iônico venoso é exame DISTINTO do arterial
   'CALCIO IONICO VENOSO':'Cálcio iônico Venoso','CÁLCIO IÔNICO VENOSO':'Cálcio iônico Venoso',
   'CAI VENOSO':'Cálcio iônico Venoso',
@@ -1880,7 +1882,9 @@ const NAME_MAP = {
   'K':'Potássio','K+':'Potássio',
   'CA++':'Cálcio iônico','CA+':'Cálcio iônico','CAI':'Cálcio iônico',
   'LAC':'Lactato',
-  'LACTATO':'Lactato','LACTATO ARTERIAL':'Lactato',
+  // Phase 11 (IMEC): header "LACTATO ARTERIAL" é exam próprio em IMEC —
+  // preservar sufixo (Arterial). Outros labs usam gasometria → _gasoRename.
+  'LACTATO':'Lactato','LACTATO ARTERIAL':'Lactato (Arterial)',
   // Phase 6g (Núcleo): Lactato venoso é exame DISTINTO do arterial
   'LACTATO VENOSO':'Lactato Venoso','LAC VENOSO':'Lactato Venoso',
   'GLICOSE':'Glicose','GLICEMIA':'Glicose','GLUCOSE':'Glicose','GLI':'Glicose',
@@ -1893,10 +1897,15 @@ const NAME_MAP = {
   // Phase 6g (Núcleo): CK-MB — variantes CPKMB, CK-MB, CKMB
   'CKMB':'CK-MB','CK-MB':'CK-MB','CKMB MASSA':'CK-MB','CK MB':'CK-MB',
   'CPKMB':'CK-MB','CPK-MB':'CK-MB','CPK MB':'CK-MB','CK-MB MASSA':'CK-MB',
+  // Phase 11.3: IMEC usa "CKMB - MASSA" (hyphen-space) e "CK-MB - MASSA"
+  'CKMB - MASSA':'CK-MB','CK-MB - MASSA':'CK-MB','CKMB-MASSA':'CK-MB',
   // Phase 6g (Núcleo): NT-proBNP canônico — variantes com/sem ponto, caps mista
   'NT-PROBNP':'NT-proBNP','NT PROBNP':'NT-proBNP','NTPROBNP':'NT-proBNP',
   'NT-PRO BNP':'NT-proBNP','NT PRO BNP':'NT-proBNP',
   'NT-PROBNP.':'NT-proBNP','NT-PRO-BNP':'NT-proBNP',
+  // Phase 11 (IMEC): header completo "NT-proBNP - PEPTÍDEO NATRIURÉTICO CEREBRAL"
+  'NT-PROBNP - PEPTÍDEO NATRIURÉTICO CEREBRAL':'NT-proBNP',
+  'NT-PROBNP - PEPTIDEO NATRIURETICO CEREBRAL':'NT-proBNP',
   'BNP':'BNP','PROCALCITONINA':'Procalcitonina',
   'FIBRINOGENIO':'Fibrinogênio','FIBRINOGÊNIO':'Fibrinogênio',
   'DIMERO D':'Dímero-D','DÍMERO D':'Dímero-D','D-DIMERO':'Dímero-D',
@@ -2144,6 +2153,10 @@ const NAME_MAP = {
   'DENGUE, NS1':'Dengue NS1','DENGUE, IGG':'Dengue IgG','DENGUE, IGM':'Dengue IgM',
   'DENGUE NS1, TESTE RAPIDO':'Dengue NS1 (TR)','DENGUE NS1, TESTE RÁPIDO':'Dengue NS1 (TR)',
   'DENGUE, TESTE RAPIDO':'Dengue (TR)','DENGUE, TESTE RÁPIDO':'Dengue (TR)',
+  // Phase 11.4 (IMEC sero): formatos "DENGUE - ANTICORPOS IGG/IGM" + "DENGUE, ANTÍGENO NS1"
+  'DENGUE - ANTICORPOS IGG':'Dengue IgG','DENGUE - ANTICORPOS IGM':'Dengue IgM',
+  'DENGUE, ANTÍGENO NS1':'Dengue NS1','DENGUE, ANTIGENO NS1':'Dengue NS1',
+  'DENGUE ANTÍGENO NS1':'Dengue NS1','DENGUE ANTIGENO NS1':'Dengue NS1',
   // Sorologias — COVID-19
   'COVID-19 IGG':'COVID-19 IgG','COVID-19 IGM':'COVID-19 IgM',
   'COVID-19 ANTIGENO':'COVID-19 Ag','COVID-19 ANTÍGENO':'COVID-19 Ag',
@@ -2156,6 +2169,11 @@ const NAME_MAP = {
   'INFLUENZA A':'Influenza A','INFLUENZA B':'Influenza B',
   'INFLUENZA A E B':'Influenza A/B','INFLUENZA A/B':'Influenza A/B',
   'INFLUENZA, TESTE RAPIDO':'Influenza (TR)','INFLUENZA, TESTE RÁPIDO':'Influenza (TR)',
+  // Phase 11 (IMEC): formato "Influenza tipo A/B: NEGATIVO"
+  'INFLUENZA TIPO A':'Influenza A','INFLUENZA TIPO B':'Influenza B',
+  // Phase 11 (IMEC): "SARS - Cov 2" (espaços em volta do dash) é distinto do
+  // "SARS-COV-2" já mapeado; preserve ambos.
+  'SARS - COV 2':'COVID-19 Ag','SARS COV 2':'COVID-19 Ag',
   // Sorologias — Hepatites
   'HBSAG':'HBsAg','ANTI-HBS':'Anti-HBs','ANTI-HCV':'Anti-HCV',
   'HEPATITE B HBSAG':'HBsAg','HEPATITE C ANTI-HCV':'Anti-HCV',
@@ -2164,6 +2182,24 @@ const NAME_MAP = {
   'HEPATITE B, HBSAG':'HBsAg','ANTI HBS':'Anti-HBs','ANTI HCV':'Anti-HCV',
   'HBS AG':'HBsAg','ANTI-HBC IGM':'Anti-HBc IgM','ANTI-HBC TOTAL':'Anti-HBc Total',
   'ANTI HBC IGM':'Anti-HBc IgM','ANTI HBC TOTAL':'Anti-HBc Total',
+  // Phase 11.4 (IMEC sero): formatos com sufixo ", ANTI" ou ", ANTI-HCV"
+  'HAV IGG, ANTI':'Anti-HAV IgG','HAV IGM, ANTI':'Anti-HAV IgM',
+  'HBS, ANTI':'Anti-HBs','HEPATITE C, ANTI-HCV':'Anti-HCV',
+  // Sorologias — HIV
+  'HIV':'HIV 1/2','HIV 1/2':'HIV 1/2','HIV I/II':'HIV 1/2',
+  'HIV I E II':'HIV 1/2','HIV 1 E 2':'HIV 1/2',
+  'ANTI-HIV':'HIV 1/2','ANTI HIV':'HIV 1/2',
+  'HIV I E II - ANTICORPOS ANTI':'HIV 1/2','HIV I E II, ANTICORPOS ANTI':'HIV 1/2',
+  'HIV 1 E 2 - ANTICORPOS ANTI':'HIV 1/2','HIV 1 E 2, ANTICORPOS ANTI':'HIV 1/2',
+  // Sorologias — Leptospirose
+  'LEPTOSPIROSE':'Leptospirose IgM','LEPTOSPIROSE IGM':'Leptospirose IgM',
+  'LEPTOSPIROSE - ANTICORPOS IGM':'Leptospirose IgM',
+  'LEPTOSPIROSE, ANTICORPOS IGM':'Leptospirose IgM',
+  'ANTICORPOS IGM ANTI-LEPTOSPIRA':'Leptospirose IgM',
+  // Sorologias — Chikungunya
+  'CHIKUNGUNYA IGG':'Chikungunya IgG','CHIKUNGUNYA IGM':'Chikungunya IgM',
+  'ANTI-CHIKUNGUNYA IGG':'Chikungunya IgG','ANTI-CHIKUNGUNYA IGM':'Chikungunya IgM',
+  'CHIKUNGUNYA, IGG':'Chikungunya IgG','CHIKUNGUNYA, IGM':'Chikungunya IgM',
   // Sorologias — VDRL / Sífilis
   'VDRL':'VDRL','VDRL SORO':'VDRL','VDRL SANGUE':'VDRL',
   'FTA-ABS IGG':'FTA-ABS IgG','FTA-ABS IGM':'FTA-ABS IgM',
@@ -2574,6 +2610,12 @@ const QUAL_STATUS = {
   'NÃO DETECTADO':'normal','NAO DETECTADO':'normal',
   'NÃO DETECTÁVEL':'normal','NAO DETECTAVEL':'normal',
   'AUSENTE':'normal','AUSÊNCIA DE ANTICORPOS':'normal',
+  // Phase 11.2: IMEC LCR (líquor) — Bacterioscopia GRAM/ZIEHL, Pesquisa de fungos, Cultura
+  'AUSÊNCIA DE BACTÉRIAS':'normal','AUSENCIA DE BACTERIAS':'normal',
+  'AUSÊNCIA DE BAAR':'normal','AUSENCIA DE BAAR':'normal',
+  'AUSÊNCIA DE FUNGOS':'normal','AUSENCIA DE FUNGOS':'normal',
+  'NÃO HOUVE CRESCIMENTO':'normal','NAO HOUVE CRESCIMENTO':'normal',
+  'NÃO HOUVE CRESCIMENTO DE BACTÉRIAS':'normal','NAO HOUVE CRESCIMENTO DE BACTERIAS':'normal',
   'NÃO IMUNE':'normal','NAO IMUNE':'normal',
   'POSITIVO':'high','POSITIVA':'high',
   'REAGENTE':'high',
@@ -2589,7 +2631,7 @@ const QUAL_STATUS = {
   'PRESENTE':'high',
 };
 
-const QUAL_PATTERN = /^(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE|L[ÍI]MPIDO|INCOLOR|AUSENTE|PRESENTE|TURVO|OPACO|CRISTALINO|HEMORR[ÁA]GICO|XANTOCR[ÔO]MICO|AMARELADO|ROSADO|AVERMELHADO|LIGEIRAMENTE\s+TURVO)$/i;
+const QUAL_PATTERN = /^(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE|L[ÍI]MPIDO|INCOLOR|AUSENTE|PRESENTE|TURVO|OPACO|CRISTALINO|HEMORR[ÁA]GICO|XANTOCR[ÔO]MICO|AMARELADO|ROSADO|AVERMELHADO|LIGEIRAMENTE\s+TURVO|AUS[ÊE]NCIA\s+DE\s+(?:BACT[ÉE]RIAS|BAAR|FUNGOS)|N[ÃA]O\s+HOUVE\s+CRESCIMENTO(?:\s+DE\s+BACT[ÉE]RIAS)?)$/i;
 
 function qualStatus(txt) {
   const u = txt.trim().toUpperCase().replace(/\s+/g,' ');
@@ -2600,7 +2642,7 @@ function qualStatus(txt) {
 // For lines like "C. difficile Toxina A : NEGATIVO   Negativo"
 function parseQualRow(line) {
   const t = line.trim();
-  const m = t.match(/^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\.\(\)\+\-\/]*?)[\s.:]+\s*(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE|L[ÍI]MPIDO|INCOLOR|AUSENTE|PRESENTE|TURVO|OPACO|CRISTALINO|HEMORR[ÁA]GICO|XANTOCR[ÔO]MICO|AMARELADO|ROSADO|AVERMELHADO)(?:\s|$)/i);
+  const m = t.match(/^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç][A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇa-záéíóúâêîôûàèìòùãõç0-9\s\.\(\)\+\-\/]*?)[\s.:]+\s*(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE|L[ÍI]MPIDO|INCOLOR|AUSENTE|PRESENTE|TURVO|OPACO|CRISTALINO|HEMORR[ÁA]GICO|XANTOCR[ÔO]MICO|AMARELADO|ROSADO|AVERMELHADO|AUS[ÊE]NCIA\s+DE\s+(?:BACT[ÉE]RIAS|BAAR|FUNGOS)|N[ÃA]O\s+HOUVE\s+CRESCIMENTO(?:\s+DE\s+BACT[ÉE]RIAS)?)(?:\s|\.|$)/i);
   if (!m) return null;
   const name = m[1].trim();
   if (name.length < 3 || name.length > 60) return null;
@@ -2648,6 +2690,13 @@ const LCR_RENAME = {
   'Cor':'Cor (LCR)',
   'Coágulo':'Coágulo (LCR)','Coagulo':'Coágulo (LCR)',
   'VDRL':'VDRL (LCR)',
+  // Phase 11.2: IMEC LCR — bacterioscopia e cultura dentro da seção VDRL
+  'Bacterioscopia Gram':'Bacterioscopia Gram (LCR)',
+  'Bacterioscopia Ziehl':'Bacterioscopia Ziehl (LCR)',
+  'Pesquisa De Fungos':'Pesquisa De Fungos (LCR)',
+  'Pesquisa de Fungos':'Pesquisa De Fungos (LCR)',
+  'Bactéria Isolada':'Bactéria Isolada (LCR)',
+  'Bacteria Isolada':'Bactéria Isolada (LCR)',
 };
 
 // Nomes já canônicos de líquor (não precisam renomear)
@@ -2676,6 +2725,34 @@ function _lcrName(name) {
   return name;
 }
 
+// Phase 11.4 (IMEC sero): detecta cabeçalho pareado de sorologia (IGG + IGM)
+// e extrai o prefixo de patógeno. Ex:
+//   "ANTICORPOS ANTI CHIKUNGUNYA IGG E IGM" → 'Chikungunya'
+//   "DENGUE IGG E IGM" → 'Dengue'
+//   "ANTICORPOS IGG E IGM - ANTI TOXOPLASMA" → 'Toxoplasma'
+function detectPairedSerology(line) {
+  const t = line.trim().toUpperCase();
+  // Padrão 1: "ANTICORPOS ANTI XXX IGG E IGM" ou "ANTI-XXX IGG E IGM"
+  let m = t.match(/^(?:ANTICORPOS\s+)?ANTI[\s-]+([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ]+)\s+IG(?:G|M)\s+E\s+IG(?:G|M)\b/);
+  if (m) return _capFirst(m[1]);
+  // Padrão 2: "XXX IGG E IGM"
+  m = t.match(/^([A-ZÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ]+)\s+IG(?:G|M)\s+E\s+IG(?:G|M)\b/);
+  if (m) return _capFirst(m[1]);
+  return null;
+}
+function _capFirst(s) {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+function _applyPairedSerology(row, ctx) {
+  if (!row || !ctx) return row;
+  if (row.name === 'IgG' || row.name === 'IgM' || row.name === 'Igg' || row.name === 'Igm') {
+    const suffix = /m$/i.test(row.name) ? 'IgM' : 'IgG';
+    row.name = `${ctx} ${suffix}`;
+  }
+  return row;
+}
+
 function parsePDFText(text) {
   const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
   const results = [];
@@ -2690,6 +2767,11 @@ function parsePDFText(text) {
   const multiProcessedIdx = new Set(); // Phase 7 HOC: linhas processadas no inMulti block — pula no second-pass
   let inNota = false;  // Phase 6h: skip Nota: blocks (texto livre que PDF.js pode quebrar em linhas soltas)
   let inLiquor = false;  // Rastreia contexto de líquor para sufixo "(LCR)"
+  // Phase 11.4 (IMEC sero): contexto de sorologia pareada.
+  // Detecta cabeçalhos como "ANTICORPOS ANTI CHIKUNGUNYA IGG E IGM" ou
+  // "DENGUE IGG E IGM" e guarda o prefixo ('Chikungunya', 'Dengue') para
+  // renomear sub-params bare "IgG"/"IgM" nas linhas seguintes.
+  let _pairedSerologyCtx = null;
   let _pendingMultiValue = null;  // Phase 6i: valor órfão de linha split (PDF.js gasometria)
   let currentExamName = '';
   let lookingForRef = false;
@@ -2805,15 +2887,29 @@ function parsePDFText(text) {
     // Phase 6h: detecta blocos "Nota:" / "Obs:" — texto descritivo livre que
     // PDF.js pode quebrar em linhas soltas ("Dengue", "IgG", etc.), gerando
     // falsos exam headers. Entra em skip mode até próxima estrutura reconhecida.
-    if (/^\s*(?:Nota|Obs|Nota\s+explicativa)\s*:/i.test(line)) {
+    // Phase 11.4 (IMEC sero): "Notas:" (plural) também gera bloco de texto livre —
+    // HAV IgM tem "Notas:" com 4 itens bullet (- A vacina..., - Testes com leituras...
+    // "resultado falso negativo ou positivo") que gera falso positivo "Resultado Falso"
+    // via parseQualRow. Também aceita "Observações:" / "Obs:" / "Observações gerais:".
+    if (/^\s*(?:Notas?|Obs|Observa[çc][ãa]o(?:\s+gerais|es)?|Observa[çc][õo]es(?:\s+gerais)?|Nota\s+explicativa)\s*:/i.test(line)) {
       inNota = true; continue;
     }
     if (inNota) {
       // Sai do Nota: block quando encontra nova estrutura
       // Phase 10: adicionado isExamHeaderLine e separadores "---" para sair de Nota:
       // corretamente no HUGO (DOSAGEM DE SÓDIO ficava engolido pelo Nota: anterior).
-      if (/^\s*(?:Exame\s*:|^\[Convenio|^\[Coleta|\[Convenio|\[Coleta|Dt\.\s+Cadastro|Paciente\s*:)/i.test(line) ||
-          isMultiHeader(line) || isExamHeaderLine(line) || /^[-=]{3,}$/.test(line.trim())) {
+      // Phase 11.3 (IMEC-05): sub-parâmetros como ALBUMINA/GLOBULINA/RELAÇÃO A/G
+      // dentro de "PROTEÍNAS TOTAIS E FRAÇÕES" (multi-section) vêm DEPOIS de um
+      // bloco "Nota:" wrapped em várias linhas de texto livre. Parser filtra
+      // blank lines em parsePDFText (text.split('\n').filter(l=>l)), então não
+      // podemos usar linha em branco como exit. Usa parseParamRow match direto:
+      // continuation de Nota: é texto livre sem padrão "NOME: VALOR UNIDADE";
+      // sub-parâmetro REAL é detectado pelo parseParamRow.
+      if (inMulti && parseParamRow(line)) {
+        inNota = false;
+        // fall through para processar o parâmetro
+      } else if (/^\s*(?:Exame\s*:|^\[Convenio|^\[Coleta|\[Convenio|\[Coleta|Dt\.\s+Cadastro|Paciente\s*:)/i.test(line) ||
+          isMultiHeader(line) || isExamHeaderLine(line) || /^[-=_]{3,}$/.test(line.trim())) {
         inNota = false;
         // fall through para processar a linha normalmente
       } else {
@@ -2837,7 +2933,8 @@ function parsePDFText(text) {
       // Phase 6e: CITOMETRIA e CITOLOGIA são sub-headers de líquor no IMEC.
       // Sem elas aqui, inLiquor era resetado ao entrar em CITOMETRIA/CITOLOGIA
       // e Hemácias/Leucócitos/Neutrófilos/etc perdiam o sufixo (LCR).
-      const isLiquorSubHeader = /^(EXAME MICROSC|CITOL[ÓO]GICO DIFERENCIAL|CITOLOGIA|CITOMETRIA|EXAME BIOQU[ÍI]M|BIOQU[ÍI]MICA|CARACTERES F[ÍI]S|ANTES DA CENTRIFUGA|AP[ÓO]S A CENTRIFUGA)/.test(lineUp);
+      // Phase 11.2: VDRL como sub-header de líquor (IMEC agrupa bacterioscopia e pesquisa de fungos sob a seção VDRL)
+      const isLiquorSubHeader = /^(EXAME MICROSC|CITOL[ÓO]GICO DIFERENCIAL|CITOLOGIA|CITOMETRIA|EXAME BIOQU[ÍI]M|BIOQU[ÍI]MICA|CARACTERES F[ÍI]S|ANTES DA CENTRIFUGA|AP[ÓO]S A CENTRIFUGA|VDRL$)/.test(lineUp);
       if (isLiquorHeader) {
         inLiquor = true;
       } else if (!isLiquorSubHeader) {
@@ -2915,12 +3012,26 @@ function parsePDFText(text) {
 
     // SINGLE EXAM: detect exam name line (Phase 8: uses shared isExamHeaderLine)
     if (isExamHeaderLine(line)) {
+      // Phase 11.2: VDRL isolado dentro de LCR é sub-seção (bacterioscopia + fungos vêm a seguir) — mantém inLiquor
+      const isLcrSubHeaderFromExam = inLiquor && /^VDRL$/i.test(line.trim());
+      if (isLcrSubHeaderFromExam) {
+        // Mantém inMulti/inLiquor ativos para o bloco VDRL+bacterioscopias capturar qualitativos
+        inMulti = true;
+        currentExamName = '';
+        pendingResult = null;
+        continue;
+      }
       inMulti = false;  // Exit multi-param mode when a new single exam header is detected
       inMultiRefSkip = false;
       inLiquor = false; // Exit liquor context
       _currentGasoContext = null;
       currentExamName = line.trim();
       pendingResult = null;
+      // Phase 11.4 (IMEC sero): detecta cabeçalho pareado "XXX IGG E IGM"
+      // Se detectado, seta contexto pra renomear bare IGG/IGM seguintes.
+      const pairedCtx = detectPairedSerology(line);
+      if (pairedCtx) _pairedSerologyCtx = pairedCtx;
+      else _pairedSerologyCtx = null;
       continue;
     }
 
@@ -2950,7 +3061,10 @@ function parsePDFText(text) {
     // Phase 6c: aceita padding dots do Núcleo "Resultado.............: 6,7 mg/dL"
     // Phase 6h: aceita também "Plasma do Paciente (P):" como rótulo (TTPA Núcleo)
     //           e parens na unit ("segundo(s)").
-    const resMatch = line.match(/(?:resultado[s]?|plasma\s+do\s+paciente\s*\(p\))[\s.:>]*:\s*([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^·0-9()]+)?/i);
+    // Phase 11.4 (IMEC sero): aceita "Índice:" como rótulo (Anti-HAV IgG/IgM) e
+    // o modificador "ÍNDICE" antes do número (Leptospirose IgM:
+    // "Resultado: ÍNDICE  0,2").
+    const resMatch = line.match(/(?:resultado[s]?|plasma\s+do\s+paciente\s*\(p\)|[íiÍI]ndice)[\s.:>]*:\s*(?:[íiÍI]ndice\s+)?([−\-]?[0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^·0-9()]+)?/i);
     // Phase 10: "Resultado: < 5,0 mg/L" — below detection limit
     if (!resMatch && !inMulti && currentExamName) {
       const ltResMatch = line.match(/resultado[s]?[\s.:>]*:\s*<\s*([0-9][0-9.,]*)\s*([a-zA-Zµ%\/~³^·0-9()]+)?/i);
@@ -3037,6 +3151,9 @@ function parsePDFText(text) {
         if (!SKIP_NAMES.has(name.toUpperCase())) {
           results.push({name,value:val,valueStr:resMatch[1],unit,refMin,refMax,date,status:getStatus(val,refMin,refMax)});
         }
+        // Phase 11.4 (IMEC sero): se o match veio de "Índice:" (Anti-HAV),
+        // limpa currentExamName pra não re-matar na próxima "Resultado: AMOSTRA..."
+        if (/^[íiÍI]ndice\b/i.test(line.trim())) { currentExamName = ''; }
         pendingResult = null;
       }
       continue;
@@ -3046,7 +3163,8 @@ function parsePDFText(text) {
     // Phase 6g: aceita padding dots do Núcleo ("Resultado..............:") e
     // o typo "Resulado" (sem "t") que aparece no laudo Núcleo de VDRL.
     if (!inMulti && currentExamName) {
-      const qualResMatch = line.match(/[Rr]esul[t]?ado[s]?[\s.:>]*:\s*(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE)/i);
+      // Phase 11 (IMEC): AUSÊNCIA DE ESTRUTURAS FÚNGICAS para exame FUNGOS PESQUISA
+      const qualResMatch = line.match(/[Rr]esul[t]?ado[s]?[\s.:>]*:\s*(N[ÃA]O\s+REAGENTE|REAGENTE|NEGATIVO|NEGATIVA|POSITIVO|POSITIVA|INDETERMINADO|INCONCLUSIVO|N[ÃA]O\s+DETECT[AÁ]VEL|DETECT[AÁ]VEL|N[ÃA]O\s+DETECTADO|DETECTADO|N[ÃA]O\s+IMUNE|IMUNE|AUS[ÊE]NCIA\s+DE\s+ESTRUTURAS\s+F[ÚU]NGICAS|PRESEN[ÇC]A\s+DE\s+ESTRUTURAS\s+F[ÚU]NGICAS)/i);
       if (qualResMatch) {
         const valStr = qualResMatch[1].trim();
         const name = normNameDisplay(currentExamName);
@@ -3057,16 +3175,24 @@ function parsePDFText(text) {
         pendingResult = null;
         continue;
       }
-      // Phase 7c: HOC usa "Name : QUAL_VALUE" sem prefixo "Resultado:" para
-      // sorologias individuais (Dengue IgG/IgM, etc.). Quando temos currentExamName
-      // e a linha bate em parseQualRow, aceita como resultado do exame atual.
+    }
+    // Phase 7c: HOC usa "Name : QUAL_VALUE" sem prefixo "Resultado:" para
+    // sorologias individuais (Dengue IgG/IgM, etc.). Quando temos currentExamName
+    // e a linha bate em parseQualRow, aceita como resultado do exame atual.
+    // Phase 11 (IMEC): retirado o guard `currentExamName` pra permitir múltiplos
+    // qualitativos em sequência (Influenza A + Influenza B + SARS - Cov 2 — cada
+    // linha tem seu próprio nome e valor). parseQualRow é estrito o suficiente
+    // pra não gerar falsos positivos.
+    if (!inMulti) {
       const singleQual = parseQualRow(line);
       if (singleQual) {
+        // Phase 11.4 (IMEC sero): renomeia bare IgG/IgM no contexto pareado
+        _applyPairedSerology(singleQual, _pairedSerologyCtx);
         if (!SKIP_NAMES.has(singleQual.name.toUpperCase())) {
           singleQual.date = date;
           results.push(singleQual);
         }
-        currentExamName = '';
+        // NÃO reset currentExamName — preserva pra próximos Resultado: pickups
         pendingResult = null;
         continue;
       }
@@ -3177,6 +3303,8 @@ function parsePDFText(text) {
         const qRow = parseQualRow(line);
         if (qRow) {
           if (inLiquor) qRow.name = _lcrName(qRow.name);
+          // Phase 11.4 (IMEC sero): renomeia bare IgG/IgM no contexto pareado
+          _applyPairedSerology(qRow, _pairedSerologyCtx);
           qRow.date = date;
           if (!SKIP_NAMES.has(qRow.name.toUpperCase())) {
             results.push(qRow);
@@ -3444,6 +3572,11 @@ LabRegistry.register(PioXLab);
 // PHASE 3a.1: só roteamento. parse() delega pro parsePDFText. Patterns
 // específicos vão sendo migrados em phases seguintes conforme a gente
 // detecta particularidades.
+// Phase 11: pre-processor adicionado para filtrar "Valor de Referência:"
+// continuation lines (tabelas multi-linha indentadas com faixas por
+// idade/sexo/condição) que o second-pass parseParamRow capturava como
+// falsos positivos — "Crianças", "Adultos", "Mulheres", "Anticoagulação
+// oral", "Menos de 24 horas", "Maior que 18 anos", etc.
 const IMECLab = {
   id: 'IMEC',
   description: 'Hospital IMEC (Ceres-GO, pasta legado biocentro)',
@@ -3464,8 +3597,98 @@ const IMECLab = {
   // sem skip/multi extras). Antes do C2, a chamada a detectFormat podia
   // devolver 'BIOCENTRO' por causa de substring no rodapé e desabilitava
   // silenciosamente o single-line — bug latente que deixa de existir agora.
+  // Phase 11: pre-processing para filtrar tabelas de ref multi-linha e
+  // blocos "Anteriores:" (histórico com dates e valores).
   parse(text) {
-    return parsePDFText(text);
+    const srcLines = text.split('\n');
+    const processed = [];
+    let inRef = false;  // dentro de "Valor de Referência:" continuation
+    let inAnt = false;  // dentro de "Anteriores:" continuation
+    for (let i = 0; i < srcLines.length; i++) {
+      const line = srcLines[i];
+      const t = line.trim();
+      // Uma linha é "continuation" se começa com bastante espaço (indentada)
+      // e não é nova seção. Threshold 8 espaços cobre tanto "                     "
+      // das refs (~21 sp) quanto "          " de alguns blocos menos indentados.
+      const isIndented = /^\s{8,}\S/.test(line);
+
+      // UROCULTURA ref-legend: "Normal..: < 10.000 UFC/mL",
+      // "Duvidoso: 10.000 a 100.000 UFC/mL", "Infecção: > 100.000 UFC/mL".
+      // Aparece em bloco solto após "Valores referenciais para contagem de colônias:"
+      // com page-break no meio, então filtra direto por pattern.
+      if (/^(Normal|Duvidoso|Infec[çc][ãa]o)\.*:\s*[<>]?\s*[\d.,]+\s*(?:a\s+[\d.,]+\s+)?UFC/i.test(t)) {
+        processed.push('');
+        continue;
+      }
+
+      // "Valor de Referência:" inicia bloco de ref. A própria linha é
+      // mantida (pra o scanner de ref do resMatch encontrar a faixa inline).
+      if (/^\s*Valor(?:es)?\s+de\s+Refer[eê]ncia/i.test(line)) {
+        inRef = true;
+        inAnt = false;
+        processed.push(line);
+        continue;
+      }
+      // "Anteriores:" inicia bloco de histórico — blank out tudo.
+      if (/^\s*Anteriores\s*:/i.test(line)) {
+        inRef = false;
+        inAnt = true;
+        processed.push('');
+        continue;
+      }
+
+      if (inRef) {
+        // Blank line não encerra o bloco — bilirrubina tem
+        // "Valor de Referência: De 0,30 A 1,20\n\n                Recém-nascidos..."
+        // (linha em branco entre ref inline e tabela pediátrica indentada).
+        if (t.length === 0) {
+          processed.push('');
+          continue;
+        }
+        if (isIndented) {
+          // Continuation indentada da ref — skip (as faixas pediátricas,
+          // "Anticoagulação oral", "Menos de 24 horas", tabelas sexo/idade,
+          // etc. viram lixo no second-pass).
+          processed.push('');
+          continue;
+        }
+        // Linha em col-0 não-indentada com conteúdo encerra o bloco ref.
+        // Pode ser separador "___", próximo exame, "Resultado:" de sub-exame
+        // (bilirrubinas), etc. Fall-through pra processar normalmente.
+        inRef = false;
+      }
+
+      if (inAnt) {
+        // Skip linhas do bloco Anteriores (continuation indentada ou as
+        // linhas de gráfico numérico/datas que vêm depois).
+        if (t.length === 0) {
+          processed.push('');
+          continue;
+        }
+        if (isIndented) {
+          processed.push('');
+          continue;
+        }
+        // Linhas de gráfico: dígito solto no início ("  4", "  3", "   250")
+        // ou data "dd/mm/yy" agrupadas. Se a linha tem CONTEÚDO em col 0
+        // (ex: "Nota:", "___", próximo exame), encerra Anteriores.
+        if (/^(Nota\s*:|_{3,}|ASSINATURA|Observa[çc][ãa]o)/i.test(t) ||
+            isExamHeaderLine(t) || isMultiHeader(t)) {
+          inAnt = false;
+        } else {
+          // Gráfico: digit-only ou date-heavy line — skip
+          if (/^[\s\d.,\/:|-]+$/.test(line)) {
+            processed.push('');
+            continue;
+          }
+          // Se tem texto significativo em col 0, sair de Anteriores
+          inAnt = false;
+        }
+      }
+
+      processed.push(line);
+    }
+    return parsePDFText(processed.join('\n'));
   }
 };
 LabRegistry.register(IMECLab);
@@ -3992,7 +4215,8 @@ const SKIP_NAMES = new Set([
   'SÉRIE ERITROCITÁRIA','SÉRIE LEUCOCITÁRIA','SÉRIE PLAQUETÁRIA','ERITROGRAMA','LEUCOGRAMA',
   'PLAQUETOGRAMA','HEMOGRAMA COMPLETO','HEMOGRAMA COM PLAQUETAS','HEMOGRAMA AUTOMATIZADO',
   'BIOQUÍMICA','BIOQUIMICA','CITOMETRIA','CITOLOGIA',
-  'BACTERIOSCOPIA GRAM','BACTERIOSCOPIA ZIEHL','PESQUISA DE FUNGOS',
+  // Phase 11.2: removidos BACTERIOSCOPIA GRAM/ZIEHL/PESQUISA DE FUNGOS do SKIP_NAMES —
+  // no IMEC LCR eles aparecem como exames qualitativos (ex: "Bacterioscopia GRAM: AUSÊNCIA DE BACTÉRIAS")
   'IDENTIFICAÇÃO',
   // Phase 6f: ASPECTO/COR/COÁGULO/VDRL removidos do SKIP_NAMES porque
   // são parâmetros qualitativos reais em laudos de líquor (HOC).
